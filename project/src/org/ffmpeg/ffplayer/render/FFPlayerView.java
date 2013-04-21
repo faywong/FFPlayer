@@ -132,12 +132,16 @@ public class FFPlayerView extends GLSurfaceView_SDL implements
 	}
 
 	private void attachMediaController() {
+                Log.d(LOG_TAG, "attachMediaController in mMediaPlayer " + mMediaController);
 		if (/* mMediaPlayer != null && */mMediaController != null) {
 			mMediaController.setMediaPlayer(this);
 			View anchorView = this.getParent() instanceof View ? (View) this
 					.getParent() : this;
 			mMediaController.setAnchorView(anchorView);
 			mMediaController.setEnabled(isInPlaybackState());
+                        Log.d(LOG_TAG, "start to show MediaController");
+                        // TODO: debug this MediaController widget
+			// mMediaController.show();
 		}
 	}
 

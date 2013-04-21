@@ -1,0 +1,7 @@
+project/bin
+project/gen
+project/libs
+project/assets
+project/obj
+project/res/values*
+project/jni/application/*/libapplication*.so

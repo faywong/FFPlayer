@@ -72,7 +72,6 @@ import org.ffmpeg.ffplayer.R;
 public class FFPlayerView extends GLSurfaceView_SDL implements
 		MediaPlayerControl {
 	private static final String LOG_TAG = "FFPlayerView";
-	private MediaController mMediaController;
 	// all possible internal states
 	private static final int STATE_ERROR = -1;
 	private static final int STATE_IDLE = 0;
@@ -89,6 +88,10 @@ public class FFPlayerView extends GLSurfaceView_SDL implements
 	// of STATE_PAUSED.
 	private int mCurrentState = STATE_IDLE;
 	private int mTargetState = STATE_IDLE;
+	DefaultRender mRenderer;
+	Context mContext;
+	DifferentTouchInput touchInput = null;
+	private MediaController mMediaController = null;
 
 	public FFPlayerView(Context context, ScreenKeyboardHelper keyboardHelper,
 			AdHelper adHelper, AppHelper appHelper) {
@@ -138,10 +141,10 @@ public class FFPlayerView extends GLSurfaceView_SDL implements
 			View anchorView = this.getParent() instanceof View ? (View) this
 					.getParent() : this;
 			mMediaController.setAnchorView(anchorView);
-			mMediaController.setEnabled(isInPlaybackState());
-                        Log.d(LOG_TAG, "start to show MediaController");
-                        // TODO: debug this MediaController widget
-			// mMediaController.show();
+			mMediaController.setEnabled(/*isInPlaybackState()*/true);
+	        Log.d(LOG_TAG, "start to show MediaController");
+	        // TODO: debug this MediaController widget
+			mMediaController.show();
 		}
 	}
 
@@ -173,11 +176,12 @@ public class FFPlayerView extends GLSurfaceView_SDL implements
 
 	public int getDuration() {
 		// TODO: refine this
-		return 0;
+		return 100;
 	}
 
 	public boolean isPlaying() {
-		return isInPlaybackState();
+		//return isInPlaybackState();
+		return true;
 	}
 
 	public void pause() {
@@ -208,6 +212,11 @@ public class FFPlayerView extends GLSurfaceView_SDL implements
 
 	@Override
 	public boolean onTouchEvent(final MotionEvent event) {
+		if (null != mMediaController && !mMediaController.isShowing()) {
+			Log.d(LOG_TAG, "MotionEvent:" + event);
+			mMediaController.show();
+		}
+
 		touchInput.process(event);
 		if (DefaultRender.mRatelimitTouchEvents) {
 			limitEventRate(event);
@@ -287,8 +296,9 @@ public class FFPlayerView extends GLSurfaceView_SDL implements
 	// This seems like redundant code - it handled in Activity.java
 	@Override
 	public boolean onKeyDown(int keyCode, final KeyEvent event) {
-		// System.out.println("Got key down event, id " + keyCode + " meta " +
-		// event.getMetaState() + " event " + event.toString());
+		Log.d(LOG_TAG, "Got key down event, id " + keyCode + " meta " +
+		 event.getMetaState() + " event " + event.toString());
+
 		if (nativeKey(keyCode, 1) == 0)
 			return super.onKeyDown(keyCode, event);
 		return true;
@@ -302,10 +312,6 @@ public class FFPlayerView extends GLSurfaceView_SDL implements
 			return super.onKeyUp(keyCode, event);
 		return true;
 	}
-
-	DefaultRender mRenderer;
-	Context mContext;
-	DifferentTouchInput touchInput = null;
 
 	public static native void nativeMotionEvent(int x, int y, int action,
 			int pointerId, int pressure, int radius);

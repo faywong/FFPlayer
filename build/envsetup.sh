@@ -518,6 +518,20 @@ function copy_assert()
     return 0;
 }
 
+function reinstall()
+{
+    T=$(gettop)
+    if [ ! "$T" ]; then
+        echo "Couldn't locate the top of the tree.  Try setting TOP."
+        return
+    fi
+    adb start-server
+    adb uninstall org.ffmpeg.ffplayer
+    adb install -r $T/project/bin/FFPlayer-debug.apk
+    adb logcat -c
+    adb logcat | tee $T/log.txt
+}
+
 function build()
 {
     local OLDPWD=`pwd`

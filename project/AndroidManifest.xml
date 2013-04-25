@@ -22,6 +22,127 @@
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="tv.ouya.intent.category.GAME" />
             </intent-filter>
+               <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.ALTERNATIVE" />
+                <category android:name="android.intent.category.SELECTED_ALTERNATIVE" />
+
+                <data android:scheme="rtp" />
+                <data android:scheme="rtsp" />
+                <data android:scheme="rtmp" />
+                <data android:scheme="mms" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.ALTERNATIVE" />
+                <category android:name="android.intent.category.SELECTED_ALTERNATIVE" />
+
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="application/mp4" />
+                <data android:mimeType="application/mpeg*" />
+                <data android:mimeType="application/ogg" />
+                <data android:mimeType="application/vnd.rn-realmedia*" />
+                <data android:mimeType="application/3gpp*" />
+                <data android:mimeType="application/vnd.3gp*" />
+                <data android:mimeType="application/vnd.dvb*" />
+                <data android:mimeType="application/vnd.dolby*" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/x-mpegURL" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.ALTERNATIVE" />
+                <category android:name="android.intent.category.SELECTED_ALTERNATIVE" />
+
+                <data android:scheme="http" />
+                <data
+                    android:host="*"
+                    android:pathPattern=".*rmvb" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.ALTERNATIVE" />
+                <category android:name="android.intent.category.SELECTED_ALTERNATIVE" />
+
+                <data android:scheme="http" />
+                <data
+                    android:host="*"
+                    android:pathPattern=".*rm" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.ALTERNATIVE" />
+                <category android:name="android.intent.category.SELECTED_ALTERNATIVE" />
+
+                <data android:scheme="http" />
+                <data
+                    android:host="*"
+                    android:pathPattern=".*webm" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.ALTERNATIVE" />
+                <category android:name="android.intent.category.SELECTED_ALTERNATIVE" />
+
+                <data android:scheme="http" />
+                <data
+                    android:host="*"
+                    android:pathPattern=".*mkv" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.ALTERNATIVE" />
+                <category android:name="android.intent.category.SELECTED_ALTERNATIVE" />
+
+                <data android:scheme="http" />
+                <data
+                    android:host="*"
+                    android:pathPattern=".*ts" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.ALTERNATIVE" />
+                <category android:name="android.intent.category.SELECTED_ALTERNATIVE" />
+
+                <data android:mimeType="video/*" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="application/sdp" />
+                <data android:mimeType="application/mp4" />
+                <data android:mimeType="application/mpeg*" />
+                <data android:mimeType="application/ogg" />
+                <data android:mimeType="application/vnd.rn-realmedia*" />
+                <data android:mimeType="application/3gpp*" />
+                <data android:mimeType="application/vnd.3gp*" />
+                <data android:mimeType="application/vnd.dvb*" />
+                <data android:mimeType="application/vnd.dolby*" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
         </activity>
     </application>
 

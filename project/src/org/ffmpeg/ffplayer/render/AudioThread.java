@@ -31,7 +31,7 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder.AudioSource;
 import java.util.concurrent.Semaphore;
 
-import org.ffmpeg.ffplayer.config.Globals;
+import org.ffmpeg.ffplayer.config.Settings;
 import org.ffmpeg.ffplayer.FFPlayer;
 
 
@@ -62,7 +62,7 @@ public class AudioThread
         }
         else
         {
-            //if( Globals.AudioBufferConfig == 0 ) // Gives too much spam to logcat, makes things worse
+            //if( Settings.AudioBufferConfig == 0 ) // Gives too much spam to logcat, makes things worse
             //	mAudio.flush();
 
             mAudio.write( mAudioBuffer, 0, mVirtualBufSize );
@@ -85,8 +85,8 @@ public class AudioThread
             if( AudioTrack.getMinBufferSize( rate, channels, encoding ) > bufSize )
                 bufSize = AudioTrack.getMinBufferSize( rate, channels, encoding );
 
-            if(Globals.AudioBufferConfig != 0) {    // application's choice - use minimal buffer
-                bufSize = (int)((float)bufSize * (((float)(Globals.AudioBufferConfig - 1) * 2.5f) + 1.0f));
+            if(Settings.AudioBufferConfig != 0) {    // application's choice - use minimal buffer
+                bufSize = (int)((float)bufSize * (((float)(Settings.AudioBufferConfig - 1) * 2.5f) + 1.0f));
                 mVirtualBufSize = bufSize;
             }
             mAudioBuffer = new byte[bufSize];

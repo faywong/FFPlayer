@@ -22,7 +22,7 @@ freely, subject to the following restrictions:
 
 package org.ffmpeg.ffplayer.util;
 
-import org.ffmpeg.ffplayer.config.Globals;
+import org.ffmpeg.ffplayer.config.Settings;
 
 import android.app.Activity;
 import android.content.Context;
@@ -64,13 +64,13 @@ public class AccelerometerReader implements SensorEventListener
 
 	public synchronized void start()
 	{
-		if( (Globals.UseAccelerometerAsArrowKeys || Globals.AppUsesAccelerometer) &&
+		if( (Settings.UseAccelerometerAsArrowKeys || Settings.AppUsesAccelerometer) &&
 			_manager != null && _manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null )
 		{
 			System.out.println("libSDL: starting accelerometer");
 			_manager.registerListener(this, _manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_GAME);
 		}
-		if( Globals.AppUsesGyroscope && _manager != null && _manager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null )
+		if( Settings.AppUsesGyroscope && _manager != null && _manager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null )
 		{
 			System.out.println("libSDL: starting gyroscope");
 			_manager.registerListener(gyro, _manager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), SensorManager.SENSOR_DELAY_GAME);
@@ -79,7 +79,7 @@ public class AccelerometerReader implements SensorEventListener
 
 	public void onSensorChanged(SensorEvent event)
 	{
-		if( Globals.HorizontalOrientation )
+		if( Settings.HorizontalOrientation )
 			nativeAccelerometer(event.values[1], -event.values[0], event.values[2]);
 		else
 			nativeAccelerometer(event.values[0], event.values[1], event.values[2]); // TODO: not tested!
@@ -97,7 +97,7 @@ public class AccelerometerReader implements SensorEventListener
 		public void onSensorChanged(SensorEvent event)
 		{
 			// TODO: vertical orientation
-			//if( Globals.HorizontalOrientation )
+			//if( Settings.HorizontalOrientation )
 			if( event.values[0] < x1 || event.values[0] > x2 ||
 				event.values[1] < y1 || event.values[1] > y2 ||
 				event.values[2] < z1 || event.values[2] > z2 )

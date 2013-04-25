@@ -17,50 +17,22 @@
 
 package org.ffmpeg.ffplayer.render;
 
-
-import javax.microedition.khronos.egl.EGL11;
-
-import org.ffmpeg.ffplayer.config.Globals;
+import org.ffmpeg.ffplayer.config.Settings;
 import org.ffmpeg.ffplayer.render.SDLInput.DifferentTouchInput;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
-import android.os.Bundle;
+import android.content.CursorLoader;
+import android.database.Cursor;
 import android.view.MotionEvent;
 import android.view.KeyEvent;
-import android.view.InputDevice;
-import android.view.Window;
-import android.view.WindowManager;
-
-
-import android.content.res.Resources;
-import android.content.res.AssetManager;
-
-import java.util.concurrent.locks.ReentrantLock;
-
-import android.os.Build;
-import java.lang.reflect.Method;
-import java.util.LinkedList;
-
-import java.nio.ByteOrder;
-import android.content.Context;
-import android.content.res.Resources;
 import android.net.Uri;
-import android.util.AttributeSet;
+import android.provider.MediaStore;
 import android.util.Log;
-import android.view.KeyEvent;
-import android.view.MotionEvent;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
-import android.view.accessibility.AccessibilityEvent;
-import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.MediaController;
 import android.widget.MediaController.MediaPlayerControl;
-import android.util.Log;
-
 import java.util.Map;
-
-import org.ffmpeg.ffplayer.R;
 
 /**
  * Displays a video file. The FFPlayerView class can load images from various
@@ -69,297 +41,315 @@ import org.ffmpeg.ffplayer.R;
  * provides various display options such as scaling and tinting.
  */
 
-public class FFPlayerView extends GLSurfaceView_SDL implements
-		MediaPlayerControl {
-	private static final String LOG_TAG = "FFPlayerView";
-	// all possible internal states
-	private static final int STATE_ERROR = -1;
-	private static final int STATE_IDLE = 0;
-	private static final int STATE_PREPARING = 1;
-	private static final int STATE_PREPARED = 2;
-	private static final int STATE_PLAYING = 3;
-	private static final int STATE_PAUSED = 4;
-	private static final int STATE_PLAYBACK_COMPLETED = 5;
+public class FFPlayerView extends GLSurfaceView_SDL implements MediaPlayerControl {
+    private static final String LOG_TAG                  = "FFPlayerView";
+    // all possible internal states
+    private static final int    STATE_ERROR              = -1;
+    private static final int    STATE_IDLE               = 0;
+    private static final int    STATE_PREPARING          = 1;
+    private static final int    STATE_PREPARED           = 2;
+    private static final int    STATE_PLAYING            = 3;
+    private static final int    STATE_PAUSED             = 4;
+    private static final int    STATE_PLAYBACK_COMPLETED = 5;
 
-	// mCurrentState is a VideoView object's current state.
-	// mTargetState is the state that a method caller intends to reach.
-	// For instance, regardless the VideoView object's current state,
-	// calling pause() intends to bring the object to a target state
-	// of STATE_PAUSED.
-	private int mCurrentState = STATE_IDLE;
-	private int mTargetState = STATE_IDLE;
-	DefaultRender mRenderer;
-	Context mContext;
-	DifferentTouchInput touchInput = null;
-	private MediaController mMediaController = null;
+    // mCurrentState is a VideoView object's current state.
+    // mTargetState is the state that a method caller intends to reach.
+    // For instance, regardless the VideoView object's current state,
+    // calling pause() intends to bring the object to a target state
+    // of STATE_PAUSED.
+    private int                 mCurrentState            = STATE_IDLE;
+    private int                 mTargetState             = STATE_IDLE;
+    DefaultRender               mRender;
+    Context                     mContext;
+    DifferentTouchInput         touchInput               = null;
+    private MediaController     mMediaController         = null;
+    private String TAG_LOG;
 
-	public FFPlayerView(Context context, ScreenKeyboardHelper keyboardHelper,
-			AdHelper adHelper, AppHelper appHelper) {
-		super(context);
-		mContext = context;
-		touchInput = DifferentTouchInput.getInstance();
-		setEGLConfigChooser(Globals.VideoDepthBpp, Globals.NeedDepthBuffer,
-				Globals.NeedStencilBuffer, Globals.NeedGles2);
-		mRenderer = new DefaultRender(context, keyboardHelper, adHelper,
-				appHelper);
-		setRenderer(mRenderer);
-	}
+    public FFPlayerView(Context context, ScreenKeyboardHelper keyboardHelper, AdHelper adHelper,
+            AppHelper appHelper) {
+        super(context);
+        mContext = context;
+        touchInput = DifferentTouchInput.getInstance();
+        setEGLConfigChooser(Settings.VideoDepthBpp, Settings.NeedDepthBuffer,
+                Settings.NeedStencilBuffer, Settings.NeedGles2);
+        mRender = new DefaultRender(context, keyboardHelper, adHelper, appHelper);
+    }
 
-	public void setMediaController(MediaController controller) {
-		if (mMediaController != null) {
-			mMediaController.hide();
-		}
-		mMediaController = controller;
-		attachMediaController();
-	}
+    public void setMediaController(MediaController controller) {
+        if (mMediaController != null) {
+            mMediaController.hide();
+        }
+        mMediaController = controller;
+        attachMediaController();
+    }
+    
+    @SuppressLint("NewApi")
+	private String getRealPathFromURI(Uri contentUri) {
+        String[] proj = { MediaStore.Video.Media.DATA };
+        CursorLoader loader = new CursorLoader(mContext, contentUri, proj, null, null, null);
+        Cursor cursor = loader.loadInBackground();
+        int column_index = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA);
+        cursor.moveToFirst();
+        return cursor.getString(column_index);
+    }
+    
+    public void setMediaURI(Uri uri) {
+        Log.d(LOG_TAG, "setMediaURI:" + uri);
+        if (null == uri) {
+            return;
+        }
 
-	public void setMediaURI(Uri uri) {
-		if (null == uri) {
-			return;
-		}
-		String scheme = uri.getScheme();
-		if (scheme == null || scheme.equals("file")) {
-			// setDataSource(uri.getPath());
-			return;
-		}
-	}
+        Settings.mediaUrl = getRealPathFromURI(uri);
+        Log.d(LOG_TAG, "Case 1 Settings.mediaUrl:" + Settings.mediaUrl);
 
-	public void setMediaURI(Uri uri, Map<String, String> headers) {
-		if (null == headers) {
-			setMediaURI(uri);
-		}
-	}
+        String scheme = uri.getScheme();
+        if (scheme == null || scheme.equals("file")) {
+            Log.d(LOG_TAG, "setMediaURI() path:" + uri.getPath());
+            Settings.mediaUrl = uri.getPath();
+            return;
+        }
+    }
 
-	private boolean isInPlaybackState() {
-		return (mCurrentState != STATE_ERROR && mCurrentState != STATE_IDLE && mCurrentState != STATE_PREPARING);
-	}
+    public void setMediaURI(Uri uri, Map<String, String> headers) {
+        if (null == headers) {
+            setMediaURI(uri);
+        }
+    }
 
-	private void attachMediaController() {
-                Log.d(LOG_TAG, "attachMediaController in mMediaPlayer " + mMediaController);
-		if (/* mMediaPlayer != null && */mMediaController != null) {
-			mMediaController.setMediaPlayer(this);
-			View anchorView = this.getParent() instanceof View ? (View) this
-					.getParent() : this;
-			mMediaController.setAnchorView(anchorView);
-			mMediaController.setEnabled(/*isInPlaybackState()*/true);
-	        Log.d(LOG_TAG, "start to show MediaController");
-	        // TODO: debug this MediaController widget
-			mMediaController.show();
-		}
-	}
+    private boolean isInPlaybackState() {
+        return (mCurrentState != STATE_ERROR && mCurrentState != STATE_IDLE && mCurrentState != STATE_PREPARING);
+    }
 
-	// interface MediaPlayerControl start
-	public boolean canPause() {
-		// TODO: refine this
-		return true;
-	}
+    private void attachMediaController() {
+        Log.d(LOG_TAG, "attachMediaController in mMediaPlayer " + mMediaController);
+        if (/* mMediaPlayer != null && */mMediaController != null) {
+            mMediaController.setMediaPlayer(this);
+            View anchorView = this.getParent() instanceof View ? (View) this.getParent() : this;
+            mMediaController.setAnchorView(anchorView);
+            mMediaController.setEnabled(/* isInPlaybackState() */true);
+        }
+    }
 
-	public boolean canSeekBackward() {
-		// TODO: refine this
-		return true;
-	}
+    // interface MediaPlayerControl start
+    public boolean canPause() {
+        // TODO: refine this
+        return true;
+    }
 
-	public boolean canSeekForward() {
-		// TODO: refine this
-		return true;
-	}
+    public boolean canSeekBackward() {
+        // TODO: refine this
+        return true;
+    }
 
-	public int getBufferPercentage() {
-		// TODO: add MediaPlayer.OnBufferingUpdateListener support
-		return 0;
-	}
+    public boolean canSeekForward() {
+        // TODO: refine this
+        return true;
+    }
 
-	public int getCurrentPosition() {
-		// TODO: refine this
-		return 0;
-	}
+    public int getBufferPercentage() {
+        // TODO: add MediaPlayer.OnBufferingUpdateListener support
+        return 0;
+    }
 
-	public int getDuration() {
-		// TODO: refine this
-		return 100;
-	}
+    public int getCurrentPosition() {
+        // TODO: refine this
+        return 0;
+    }
 
-	public boolean isPlaying() {
-		//return isInPlaybackState();
-		return true;
-	}
+    public int getDuration() {
+        // TODO: refine this
+        return 100;
+    }
 
-	public void pause() {
-		if (isInPlaybackState()) {
-			// TODO: implement this
-			mCurrentState = STATE_PAUSED;
-		}
-		mTargetState = STATE_PAUSED;
-	}
+    public boolean isPlaying() {
+        // return isInPlaybackState();
+        return true;
+    }
 
-	public void seekTo(int msec) {
-		// TODO: implement this
-		if (isInPlaybackState()) {
-		} else {
+    public void pause() {
+        if (isInPlaybackState()) {
+            // TODO: implement this
+            mCurrentState = STATE_PAUSED;
+        }
+        mTargetState = STATE_PAUSED;
+    }
 
-			// mSeekWhenPrepared = msec;
-		}
-	}
+    public void seekTo(int msec) {
+        // TODO: implement this
+        if (isInPlaybackState()) {
+        } else {
 
-	public void start() {
-		if (isInPlaybackState()) {
-			// TODO: implement this
-		}
-		mTargetState = STATE_PLAYING;
-	}
+            // mSeekWhenPrepared = msec;
+        }
+    }
 
-	// interface MediaPlayerControl end
+    public void start() {
+        Log.d(LOG_TAG, "start() mCurrentState:" + mCurrentState);
+        if (!isInPlaybackState()) {
+            // TODO: implement this
+            Log.d(LOG_TAG, "acually start");
+            setRenderer(mRender);
+        } 
+        mTargetState = STATE_PLAYING;
+    }
 
-	@Override
-	public boolean onTouchEvent(final MotionEvent event) {
-		if (null != mMediaController && !mMediaController.isShowing()) {
-			Log.d(LOG_TAG, "MotionEvent:" + event);
-			mMediaController.show();
-		}
+    // interface MediaPlayerControl end
 
-		touchInput.process(event);
-		if (DefaultRender.mRatelimitTouchEvents) {
-			limitEventRate(event);
-		}
-		return true;
-	};
+    @Override
+    public boolean onTouchEvent(final MotionEvent event) {
+        if (null != mMediaController && !mMediaController.isShowing()) {
+            Log.d(LOG_TAG, "MotionEvent:" + event);
+            mMediaController.show();
+        }
 
-	@Override
-	public boolean onGenericMotionEvent(final MotionEvent event) {
-		touchInput.processGenericEvent(event);
-		if (DefaultRender.mRatelimitTouchEvents) {
-			limitEventRate(event);
-		}
-		return true;
-	}
+        // touchInput.process(event);
+        if (DefaultRender.mRatelimitTouchEvents) {
+            limitEventRate(event);
+        }
+        return true;
+    };
 
-	public void limitEventRate(final MotionEvent event) {
-		// Wait a bit, and try to synchronize to app framerate, or event thread
-		// will eat all CPU and we'll lose FPS
-		// With Froyo the rate of touch events seems to be limited by OS, but
-		// they are arriving faster then we're redrawing anyway
-		if ((event.getAction() == MotionEvent.ACTION_MOVE || event.getAction() == MotionEvent.ACTION_HOVER_MOVE)) {
-			synchronized (mRenderer) {
-				try {
-					mRenderer.wait(300L); // And sometimes the app decides not
-											// to render at all, so this timeout
-											// should not be big.
-				} catch (InterruptedException e) {
-				}
-			}
-		}
-	}
+    @Override
+    public boolean onGenericMotionEvent(final MotionEvent event) {
+        touchInput.processGenericEvent(event);
+        if (DefaultRender.mRatelimitTouchEvents) {
+            limitEventRate(event);
+        }
+        return true;
+    }
 
-	public void exitApp() {
-		((DefaultRender) mRenderer).exitApp();
-	};
+    public void limitEventRate(final MotionEvent event) {
+        // Wait a bit, and try to synchronize to app framerate, or event thread
+        // will eat all CPU and we'll lose FPS
+        // With Froyo the rate of touch events seems to be limited by OS, but
+        // they are arriving faster then we're redrawing anyway
+        if ((event.getAction() == MotionEvent.ACTION_MOVE || event.getAction() == MotionEvent.ACTION_HOVER_MOVE)) {
+            synchronized (mRender) {
+                try {
+                    mRender.wait(300L); // And sometimes the app decides not
+                                          // to render at all, so this timeout
+                                          // should not be big.
+                } catch (InterruptedException e) {
+                }
+            }
+        }
+    }
 
-	@Override
-	public void onPause() {
-		if (mRenderer.getState() == GLSurfaceView_SDL.Renderer.STATE_PAUSED)
-			return;
-		mRenderer.setState(GLSurfaceView_SDL.Renderer.STATE_PAUSED);
-		((DefaultRender) mRenderer).nativeGlContextLostAsyncEvent();
-		if (mRenderer.accelerometer != null) // For some reason it crashes here
-												// often - are we getting this
-												// event before initialization?
-			mRenderer.accelerometer.stop();
-		super.onPause();
-	};
+    public void onDestroy() {
+        if (null != mRender) {
+            ((DefaultRender) mRender).onDestroy();
+        }
+    };
 
-	public boolean isPaused() {
-		return mRenderer.mPaused;
-	}
+    @Override
+    public void onPause() {
+        if (mRender.getState() == GLSurfaceView_SDL.Renderer.STATE_PAUSED)
+            return;
+        mRender.setState(GLSurfaceView_SDL.Renderer.STATE_PAUSED);
+        ((DefaultRender) mRender).nativeGlContextLostAsyncEvent();
+        if (mRender.accelerometer != null) // For some reason it crashes here
+                                             // often - are we getting this
+                                             // event before initialization?
+            mRender.accelerometer.stop();
+        super.onPause();
+    };
 
-	@Override
-	public void onResume() {
-		if (mRenderer.getState() != GLSurfaceView_SDL.Renderer.STATE_PAUSED)
-			return;
-		mRenderer.setState(GLSurfaceView_SDL.Renderer.STATE_ACTIVE);
-		super.onResume();
-		Log.i(LOG_TAG,
-				"libSDL: FFPlayerView.onResume(): mRenderer.mGlSurfaceCreated "
-						+ mRenderer.mGlSurfaceCreated + " mRenderer.mPaused "
-						+ mRenderer.mPaused);
-		if (mRenderer.mGlSurfaceCreated && !mRenderer.mPaused
-				|| Globals.NonBlockingSwapBuffers)
-			mRenderer.nativeGlContextRecreated();
-		if (mRenderer.accelerometer != null
-				&& mRenderer.accelerometer.openedBySDL) // For some reason it
-														// crashes here often -
-														// are we getting this
-														// event before
-														// initialization?
-			mRenderer.accelerometer.start();
-	};
+    public boolean isPaused() {
+        return mRender.mPaused;
+    }
 
-	// This seems like redundant code - it handled in Activity.java
-	@Override
-	public boolean onKeyDown(int keyCode, final KeyEvent event) {
-		Log.d(LOG_TAG, "Got key down event, id " + keyCode + " meta " +
-		 event.getMetaState() + " event " + event.toString());
+    @Override
+    public void onResume() {
+        if (mRender.getState() != GLSurfaceView_SDL.Renderer.STATE_PAUSED)
+            return;
+        mRender.setState(GLSurfaceView_SDL.Renderer.STATE_ACTIVE);
+        super.onResume();
+        Log.i(LOG_TAG, "libSDL: FFPlayerView.onResume(): mRenderer.mGlSurfaceCreated "
+                + mRender.mGlSurfaceCreated + " mRenderer.mPaused " + mRender.mPaused);
+        if (mRender.mGlSurfaceCreated && !mRender.mPaused || Settings.NonBlockingSwapBuffers)
+            mRender.nativeGlContextRecreated();
+        if (mRender.accelerometer != null && mRender.accelerometer.openedBySDL) // For
+                                                                                    // some
+                                                                                    // reason
+                                                                                    // it
+                                                                                    // crashes
+                                                                                    // here
+                                                                                    // often
+                                                                                    // -
+                                                                                    // are
+                                                                                    // we
+                                                                                    // getting
+                                                                                    // this
+                                                                                    // event
+                                                                                    // before
+                                                                                    // initialization?
+            mRender.accelerometer.start();
+    };
 
-		if (nativeKey(keyCode, 1) == 0)
-			return super.onKeyDown(keyCode, event);
-		return true;
-	}
+    // This seems like redundant code - it handled in Activity.java
+    @Override
+    public boolean onKeyDown(int keyCode, final KeyEvent event) {
+        Log.d(LOG_TAG, "Got key down event, id " + keyCode + " meta " + event.getMetaState()
+                + " event " + event.toString());
 
-	@Override
-	public boolean onKeyUp(int keyCode, final KeyEvent event) {
-		// System.out.println("Got key up event, id " + keyCode + " meta " +
-		// event.getMetaState());
-		if (nativeKey(keyCode, 0) == 0)
-			return super.onKeyUp(keyCode, event);
-		return true;
-	}
+        if (nativeKey(keyCode, 1) == 0)
+            return super.onKeyDown(keyCode, event);
+        return true;
+    }
 
-	public static native void nativeMotionEvent(int x, int y, int action,
-			int pointerId, int pressure, int radius);
+    @Override
+    public boolean onKeyUp(int keyCode, final KeyEvent event) {
+        // System.out.println("Got key up event, id " + keyCode + " meta " +
+        // event.getMetaState());
+        if (nativeKey(keyCode, 0) == 0)
+            return super.onKeyUp(keyCode, event);
+        return true;
+    }
 
-	public static native int nativeKey(int keyCode, int down);
+    public static native void nativeMotionEvent(int x, int y, int action, int pointerId,
+            int pressure, int radius);
 
-	public static native void nativeTouchpad(int x, int y, int down,
-			int multitouch);
+    public static native int nativeKey(int keyCode, int down);
 
-	public static native void initJavaCallbacks();
+    public static native void nativeTouchpad(int x, int y, int down, int multitouch);
 
-	public static native void nativeHardwareMouseDetected(int detected);
+    public static native void initJavaCallbacks();
 
-	public static native void nativeMouseButtonsPressed(int buttonId,
-			int pressedState);
+    public static native void nativeHardwareMouseDetected(int detected);
 
-	public static native void nativeMouseWheel(int scrollX, int scrollY);
+    public static native void nativeMouseButtonsPressed(int buttonId, int pressedState);
 
-	public static native void nativeGamepadAnalogJoystickInput(float stick1x,
-			float stick1y, float stick2x, float stick2y, float rtrigger,
-			float ltrigger);
+    public static native void nativeMouseWheel(int scrollX, int scrollY);
 
-	public interface ScreenKeyboardHelper {
-		void showScreenKeyboardWithoutTextInputField();
+    public static native void nativeGamepadAnalogJoystickInput(float stick1x, float stick1y,
+            float stick2x, float stick2y, float rtrigger, float ltrigger);
 
-		void showScreenKeyboard(final String oldText, boolean sendBackspace);
+    public interface ScreenKeyboardHelper {
+        void showScreenKeyboardWithoutTextInputField();
 
-		void hideScreenKeyboard();
+        void showScreenKeyboard(final String oldText, boolean sendBackspace);
 
-		boolean isScreenKeyboardShown();
+        void hideScreenKeyboard();
 
-		void setScreenKeyboardHintMessage(String s);
-	}
+        boolean isScreenKeyboardShown();
 
-	public interface AdHelper {
-		void setAdvertisementVisible(final int visible);
+        void setScreenKeyboardHintMessage(String s);
+    }
 
-		void getAdvertisementParams(int params[]);
+    public interface AdHelper {
+        void setAdvertisementVisible(final int visible);
 
-		void requestNewAdvertisement();
+        void getAdvertisementParams(int params[]);
 
-		void setAdvertisementPosition(int x, int y);
-	}
+        void requestNewAdvertisement();
 
-	public interface AppHelper {
-		void LoadApplicationLibrary(final Context context);
+        void setAdvertisementPosition(int x, int y);
+    }
 
-		int getApplicationVersion();
-	}
+    public interface AppHelper {
+        void LoadApplicationLibrary(final Context context);
+
+        int getApplicationVersion();
+    }
 
 }

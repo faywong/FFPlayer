@@ -4,11 +4,9 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.ffmpeg.ffplayer.config.Globals;
+import org.ffmpeg.ffplayer.config.Settings;
 import org.ffmpeg.ffplayer.render.SDLInput.SDL_1_2_Keycodes;
 import org.ffmpeg.ffplayer.render.SDLInput.SDL_1_3_Keycodes;
-
-import android.util.Log;
 
 public class SDL_Keys
 {
@@ -27,7 +25,7 @@ public class SDL_Keys
 		ArrayList<String> Names = new ArrayList<String> ();
 		ArrayList<Integer> Values = new ArrayList<Integer> ();
 		Field [] fields = SDL_1_2_Keycodes.class.getDeclaredFields();
-		if(Globals.Using_SDL_1_3 )
+		if(Settings.Using_SDL_1_3 )
 		{
 			fields = SDL_1_3_Keycodes.class.getDeclaredFields();
 		}

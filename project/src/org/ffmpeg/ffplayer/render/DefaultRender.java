@@ -107,7 +107,7 @@ public class DefaultRender extends GLSurfaceView_SDL.Renderer {
         // eglSwapBuffers() from native code
         nativeInit(
                 Settings.mediaUrl,
-                Settings.CommandLine + Settings.mediaUrl,
+                Settings.CommandLine,
                 ((Settings.SwVideoMode && Settings.MultiThreadedVideo) || Settings.CompatibilityHacksVideo) ? 1
                         : 0, android.os.Debug.isDebuggerConnected() ? 1 : 0);
         System.exit(0); // The main() returns here - I don't bother with

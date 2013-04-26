@@ -2383,7 +2383,7 @@ public class Settings {
 
     public static int           ClickScreenTouchspotSize                      = 0;
 
-    public static String        CommandLine                                   = "ffplay -loglevel verbose -nostats ";
+    public static String        CommandLine                                   = "ffplay -loglevel verbose -nostats";
 
     public static boolean       CompatibilityHacksStaticInit                  = false;
 

@@ -98,7 +98,7 @@ extern C_LINKAGE void
 Java_org_ffmpeg_ffplayer_render_DefaultRender_nativeInit(JNIEnv* env, jobject thiz, jstring jmediaurl, jstring cmdline, jint multiThreadedVideo, jint waitForDebugger)
 {
 	int i = 0;
-	char mediaurl[PATH_MAX] = "";
+	char *mediaurl = NULL;
 	const jbyte *jstr;
 
     if ((pthread_getspecific(gProcessContext.tls_key)) == NULL) {
@@ -114,8 +114,10 @@ Java_org_ffmpeg_ffplayer_render_DefaultRender_nativeInit(JNIEnv* env, jobject th
     gProcessContext.thiz = thiz;
 
 	jstr = (*env)->GetStringUTFChars(env, jmediaurl, NULL);
-	if (jstr != NULL && strlen(jstr) > 0)
-		strcpy(mediaurl, jstr);
+	if (jstr != NULL && strlen(jstr) > 0) {
+		mediaurl = strdup(jstr);
+	}
+
 	(*env)->ReleaseStringUTFChars(env, jmediaurl, jstr);
 
 	__android_log_print(ANDROID_LOG_INFO, "libSDL", "mediaurl:\"%s\"", mediaurl);
@@ -132,33 +134,41 @@ Java_org_ffmpeg_ffplayer_render_DefaultRender_nativeInit(JNIEnv* env, jobject th
 		return;
 	}
 
+	char * str1, * str2;
+	str1 = strdup(str);
+	str2 = str1;
+	while(str2)
 	{
-		char * str1, * str2;
-		str1 = strdup(str);
-		str2 = str1;
-		while(str2)
-		{
-			gProcessContext.argc++;
-			str2 = strchr(str2, ' ');
-			if(!str2)
-				break;
-			str2++;
-		}
-
-		gProcessContext.argv = (char **)malloc(gProcessContext.argc*sizeof(char *));
-		str2 = str1;
-		while(str2)
-		{
-			gProcessContext.argv[i] = str2;
-			i++;
-			str2 = strchr(str2, ' ');
-			if (str2)
-				*str2 = 0;
-			else
-				break;
-			str2++;
-		}
+		gProcessContext.argc++;
+		str2 = strchr(str2, ' ');
+		if(!str2)
+			break;
+		str2++;
 	}
+
+	gProcessContext.argv = (char **)malloc((gProcessContext.argc + 1) * sizeof(char *));
+	str2 = str1;
+	while(str2)
+	{
+		gProcessContext.argv[i] = str2;
+		i++;
+		str2 = strchr(str2, ' ');
+		if (str2)
+			*str2 = 0;
+		else
+			break;
+		str2++;
+	}
+	char *it = mediaurl;
+	__android_log_print(ANDROID_LOG_INFO, "libSDL", "Calling SDL_main(\"%s\") case 1", it);
+
+	while (*it == ' ' && *it != 0) {
+		it++;
+	}
+	gProcessContext.argv[i] = it;
+	gProcessContext.argc++;
+
+	__android_log_print(ANDROID_LOG_INFO, "libSDL", "Calling SDL_main(\"%s\"), case 2", it);
 
 	__android_log_print(ANDROID_LOG_INFO, "libSDL", "Calling SDL_main(\"%s\")", str);
 
@@ -186,4 +196,6 @@ Java_org_ffmpeg_ffplayer_render_DefaultRender_nativeInit(JNIEnv* env, jobject th
 		SDL_ANDROID_MultiThreadedVideoLoop();
 	}
 #endif
+	free(mediaurl);
+	free(str1);
 };

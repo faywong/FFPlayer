@@ -57,6 +57,7 @@
 #include <SDL_thread.h>
 
 #include "cmdutils.h"
+#include "oscl.h"
 
 #include <assert.h>
 
@@ -65,9 +66,9 @@
 #define printf(...) __android_log_print(ANDROID_LOG_INFO, "FFplay", __VA_ARGS__)
 #define av_log(X, Y, ...) __android_log_print(ANDROID_LOG_INFO, "FFplay", __VA_ARGS__)
 
-
 const char program_name[] = "ffplay";
 const int program_birth_year = 2003;
+
 
 #define MAX_QUEUE_SIZE (15 * 1024 * 1024)
 #define MIN_FRAMES 5
@@ -268,6 +269,58 @@ typedef struct VideoState {
 
     SDL_cond *continue_read_thread;
 } VideoState;
+
+static VideoState *is = NULL;
+extern oscl_player_adapter g_android_player_adapter;
+
+static const char* android_player_adapter_get_name()
+{
+    return "ANDROID_PLAYER_ADAPTER";
+}
+
+static float android_player_adapter_get_version()
+{
+    return 1.0;
+}
+
+static int android_player_adapter_setup()
+{
+    return 0;
+}
+
+static int android_player_adapter_teardown()
+{
+    return 0;
+}
+
+static double get_master_clock(VideoState *is);
+
+static int android_player_adapter_get_current_position()
+{
+    int cur_position = 0;
+    if (NULL != is) {
+        cur_position = get_master_clock(is) / AV_TIME_BASE;
+        av_log(NULL, AV_LOG_DEBUG, "cur_position:%d seconds", cur_position);
+    }
+    return cur_position;
+}
+
+static int android_player_adapter_get_duration()
+{
+    int duration = 0;
+    if (NULL != is) {
+        duration = is->ic->duration / AV_TIME_BASE;
+        av_log(NULL, AV_LOG_DEBUG, "duration:%d seconds", duration);
+    }
+    return duration;
+}
+
+static oscl_meta_data android_player_adapter_get_metadata()
+{
+    oscl_meta_data meta;
+    memset(&meta, 0, sizeof(meta));
+    return meta;
+}
 
 /* options specified by the user */
 static AVInputFormat *file_iformat;
@@ -1242,7 +1295,7 @@ static double compute_target_delay(double delay, VideoState *is)
             if (diff <= -sync_threshold)
                 delay = 0;
             else if (diff >= sync_threshold)
-                delay = 2 * delay;
+            	delay = 2 * delay;
         }
     }
 
@@ -2962,6 +3015,8 @@ static void event_loop(VideoState *cur_stream)
                 break;
             }
             switch (event.key.keysym.sym) {
+            av_log(NULL, AV_LOG_DEBUG, "in event_loop() received a key:%d\n", event.key.keysym.sym);
+            av_log(NULL, AV_LOG_DEBUG, "SDLK_F1:%d SDLK_F2:%d\n", SDLK_F1, SDLK_F2);
             case SDLK_ESCAPE:
             case SDLK_q:
                 do_exit(cur_stream);
@@ -2972,6 +3027,8 @@ static void event_loop(VideoState *cur_stream)
                 break;
             case SDLK_p:
             case SDLK_SPACE:
+            case SDLK_F1:
+            case SDLK_F2:
                 toggle_pause(cur_stream);
                 break;
             case SDLK_s: // S: Step to next frame
@@ -3319,8 +3376,14 @@ static int lockmgr(void **mtx, enum AVLockOp op)
 /* Called from the main */
 int main(int argc, char **argv)
 {
+	g_android_player_adapter.getName = android_player_adapter_get_name;
+	g_android_player_adapter.getVersion = android_player_adapter_get_version;
+	g_android_player_adapter.setUp = android_player_adapter_setup;
+	g_android_player_adapter.tearDown = android_player_adapter_teardown;
+	g_android_player_adapter.getCurrentPosition = android_player_adapter_get_current_position;
+	g_android_player_adapter.getDuration = android_player_adapter_get_duration;
+	g_android_player_adapter.getMetaData = android_player_adapter_get_metadata;
     int flags;
-    VideoState *is;
     char dummy_videodriver[] = "SDL_VIDEODRIVER=dummy";
 
     av_log_set_flags(AV_LOG_SKIP_REPEATED);

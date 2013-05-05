@@ -151,6 +151,7 @@ public class Settings {
         }
         System.out.println("libSDL: Settings.Load(): enter");
         nativeInitKeymap();
+        
         for (int i = 0; i < SDL_Keys.JAVA_KEYCODE_LAST; i++) {
             int sdlKey = nativeGetKeymapKey(i);
             int idx = 0;

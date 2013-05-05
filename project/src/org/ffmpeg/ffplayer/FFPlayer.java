@@ -76,6 +76,57 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // load SDL Libraries & Settings first
+        final Semaphore SDLLibsLoadingSem = new Semaphore(0);
+
+        class Callback implements Runnable {
+            FFPlayer p;
+
+            Callback(FFPlayer _p) {
+                p = _p;
+            }
+
+            public void run() {
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException e) {
+                }
+
+                if (p.mAudioThread == null) {
+                    System.out.println("libSDL: Loading libraries");
+                    p.LoadLibraries();
+                    System.out.println("libSDL: Loading ApplicationLibrary");
+                    if (!Settings.CompatibilityHacksStaticInit) {
+                        p.LoadApplicationLibrary(p);
+                    }
+                    p.mAudioThread = new AudioThread(p);
+                    System.out.println("libSDL: Loading settings");
+                    final Semaphore SettingsLoadingSem = new Semaphore(0);
+                    class Callback2 implements Runnable {
+                        public FFPlayer Parent;
+
+                        public void run() {
+                            Settings.load(Parent);
+                            Log.d(LOG_TAG, "ready to release SettingsLoadingSem");
+                            SettingsLoadingSem.release();
+                            Log.d(LOG_TAG, "SettingsLoadingSem released");
+                        }
+                    }
+                    Callback2 cb = new Callback2();
+                    cb.Parent = p;
+                    // p.runOnUiThread(cb);
+                    (new Thread(cb)).start();
+                    Log.d(LOG_TAG, "Ready to acquire SettingsLoadingSem");
+                    SettingsLoadingSem.acquireUninterruptibly();
+                    Log.d(LOG_TAG, "SettingsLoadingSem acquired");
+                }
+                initSDL();
+                Log.d(LOG_TAG, "ready to release SDLLibsLoadingSem");
+                SDLLibsLoadingSem.release();
+                Log.d(LOG_TAG, "SDLLibsLoadingSem released");
+            }
+        }
+        (new Thread(new Callback(this))).start();
 
         setRequestedOrientation(Settings.HorizontalOrientation ? ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                 : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
@@ -97,8 +148,6 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
         _layout2 = new LinearLayout(this);
         _layout2.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        final Semaphore loadedLibraries = new Semaphore(0);
 
         _layout.addView(_layout2);
 
@@ -125,51 +174,11 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
                     new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                             ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.RIGHT));
         }
+        SDLLibsLoadingSem.acquireUninterruptibly();
+        Log.d(LOG_TAG, "SDLLibsLoadingSem acquired");
+        Log.d(LOG_TAG, "ready to setContentView");
 
         setContentView(_videoLayout);
-
-        class Callback implements Runnable {
-            FFPlayer p;
-
-            Callback(FFPlayer _p) {
-                p = _p;
-            }
-
-            public void run() {
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException e) {
-                }
-
-                if (p.mAudioThread == null) {
-                    System.out.println("libSDL: Loading libraries");
-                    p.LoadLibraries();
-                    System.out.println("libSDL: Loading ApplicationLibrary");
-                    if (!Settings.CompatibilityHacksStaticInit) {
-                        p.LoadApplicationLibrary(p);
-                    }
-                    p.mAudioThread = new AudioThread(p);
-                    System.out.println("libSDL: Loading settings");
-                    final Semaphore loaded = new Semaphore(0);
-                    class Callback2 implements Runnable {
-                        public FFPlayer Parent;
-
-                        public void run() {
-                            Settings.load(Parent);
-                            loaded.release();
-                            loadedLibraries.release();
-                        }
-                    }
-                    Callback2 cb = new Callback2();
-                    cb.Parent = p;
-                    p.runOnUiThread(cb);
-                    loaded.acquireUninterruptibly();
-                }
-
-                initSDL();
-            }
-        }
-        (new Thread(new Callback(this))).start();
     }
 
     public void setUpStatusLabel() {
@@ -189,7 +198,8 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
             public void run() {
                 // int tries = 30;
                 while (isCurrentOrientationHorizontal() != Settings.HorizontalOrientation) {
-                    System.out.println("libSDL: Waiting for screen orientation to change - the device is probably in the lockscreen mode");
+                    System.out
+                            .println("libSDL: Waiting for screen orientation to change - the device is probably in the lockscreen mode");
                     try {
                         Thread.sleep(500);
                     } catch (Exception e) {
@@ -249,7 +259,7 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
         // Receive keyboard events
         DimSystemStatusBar.get().dim(_videoLayout);
         DimSystemStatusBar.get().dim(mVideoView);
-        
+
         Intent launchIntent = getIntent();
         Log.d(LOG_TAG, "onResume() launched by intent:" + launchIntent);
         if (null != launchIntent && launchIntent.getAction().equals(Intent.ACTION_VIEW)) {
@@ -288,10 +298,11 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
         super.onWindowFocusChanged(hasFocus);
         System.out.println("libSDL: onWindowFocusChanged: " + hasFocus
                 + " - sending onPause/onResume");
-        if (hasFocus == false)
-            onPause();
-        else
-            onResume();
+        return;
+        // if (hasFocus == false)
+        // onPause();
+        // else
+        // onResume();
         /*
          * if (hasFocus == false) { synchronized(textInput) { // Send
          * 'SDLK_PAUSE' (to enter pause mode) to native code:
@@ -557,8 +568,11 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
 
     @Override
     public boolean dispatchTouchEvent(final MotionEvent ev) {
-        // System.out.println("dispatchTouchEvent: " + ev.getAction() +
-        // " coords " + ev.getX() + ":" + ev.getY() );
+        System.out.println("dispatchTouchEvent: " + ev.getAction() +
+        " coords " + ev.getX() + ":" + ev.getY() );
+        Log.d(LOG_TAG, "dispatchTouchEvent() _screenKeyboard:" + _screenKeyboard
+                + " _ad.getView():" + _ad.getView() + " mVideoView:" + mVideoView
+                + " touchListener:" + touchListener);
         if (_screenKeyboard != null)
             _screenKeyboard.dispatchTouchEvent(ev);
         else if (_ad.getView() != null

@@ -53,17 +53,12 @@ public class FFPlayerView extends GLSurfaceView_SDL implements MediaPlayerContro
     private static final int    STATE_PLAYBACK_COMPLETED = 5;
 
     // mCurrentState is a VideoView object's current state.
-    // mTargetState is the state that a method caller intends to reach.
-    // For instance, regardless the VideoView object's current state,
-    // calling pause() intends to bring the object to a target state
-    // of STATE_PAUSED.
     private int                 mCurrentState            = STATE_IDLE;
-    private int                 mTargetState             = STATE_IDLE;
     DefaultRender               mRender;
     Context                     mContext;
     DifferentTouchInput         touchInput               = null;
     private MediaController     mMediaController         = null;
-    private String TAG_LOG;
+    private boolean hasRenderSet = false;
 
     public FFPlayerView(Context context, ScreenKeyboardHelper keyboardHelper, AdHelper adHelper,
             AppHelper appHelper) {
@@ -82,9 +77,9 @@ public class FFPlayerView extends GLSurfaceView_SDL implements MediaPlayerContro
         mMediaController = controller;
         attachMediaController();
     }
-    
+
     @SuppressLint("NewApi")
-	private String getRealPathFromURI(Uri contentUri) {
+        private String getRealPathFromURI(Uri contentUri) {
         String[] proj = { MediaStore.Video.Media.DATA };
         CursorLoader loader = new CursorLoader(mContext, contentUri, proj, null, null, null);
         Cursor cursor = loader.loadInBackground();
@@ -92,7 +87,7 @@ public class FFPlayerView extends GLSurfaceView_SDL implements MediaPlayerContro
         cursor.moveToFirst();
         return cursor.getString(column_index);
     }
-    
+
     public void setMediaURI(Uri uri) {
         Log.d(LOG_TAG, "setMediaURI:" + uri);
         if (null == uri) {
@@ -152,13 +147,15 @@ public class FFPlayerView extends GLSurfaceView_SDL implements MediaPlayerContro
     }
 
     public int getCurrentPosition() {
-        // TODO: refine this
-        return 0;
+        int currentPosition = nativeGetCurrentPosition();
+        Log.d(LOG_TAG, "CurrentPosition:" + currentPosition);
+        return currentPosition;
     }
 
     public int getDuration() {
-        // TODO: refine this
-        return 100;
+        int duration = nativeGetDuration();
+        Log.d(LOG_TAG, "duration:" + duration);
+        return duration;
     }
 
     public boolean isPlaying() {
@@ -166,12 +163,29 @@ public class FFPlayerView extends GLSurfaceView_SDL implements MediaPlayerContro
         return true;
     }
 
+    public void start() {
+        Log.d(LOG_TAG, "start() mCurrentState:" + mCurrentState);
+        if (!isInPlaybackState()) {
+            Log.d(LOG_TAG, "acually start");
+            if (!hasRenderSet) {
+                setRenderer(mRender);
+                hasRenderSet = true;
+            }
+            Log.d(LOG_TAG, "start() inject native key KEYCODE_MEDIA_PLAY");
+            nativeKey(KeyEvent.KEYCODE_MEDIA_PLAY, 1);
+            nativeKey(KeyEvent.KEYCODE_MEDIA_PLAY, 0);
+            mCurrentState = STATE_PLAYING;
+        }
+    }
+    
     public void pause() {
+        Log.d(LOG_TAG, "pause() mCurrentState:" + mCurrentState);
         if (isInPlaybackState()) {
-            // TODO: implement this
+            Log.d(LOG_TAG, "start() inject native key KEYCODE_MEDIA_PAUSE");
+            nativeKey(KeyEvent.KEYCODE_MEDIA_PAUSE, 1);
+            nativeKey(KeyEvent.KEYCODE_MEDIA_PAUSE, 0);
             mCurrentState = STATE_PAUSED;
         }
-        mTargetState = STATE_PAUSED;
     }
 
     public void seekTo(int msec) {
@@ -183,29 +197,21 @@ public class FFPlayerView extends GLSurfaceView_SDL implements MediaPlayerContro
         }
     }
 
-    public void start() {
-        Log.d(LOG_TAG, "start() mCurrentState:" + mCurrentState);
-        if (!isInPlaybackState()) {
-            // TODO: implement this
-            Log.d(LOG_TAG, "acually start");
-            setRenderer(mRender);
-        } 
-        mTargetState = STATE_PLAYING;
-    }
 
     // interface MediaPlayerControl end
 
     @Override
     public boolean onTouchEvent(final MotionEvent event) {
+        Log.d(LOG_TAG, " onTouchEvent() MotionEvent:" + event);
         if (null != mMediaController && !mMediaController.isShowing()) {
-            Log.d(LOG_TAG, "MotionEvent:" + event);
+            Log.d(LOG_TAG, "onTouchEvent:" + event);
             mMediaController.show();
         }
 
-        // touchInput.process(event);
-        if (DefaultRender.mRatelimitTouchEvents) {
-            limitEventRate(event);
-        }
+//      touchInput.process(event);
+//      if (DefaultRender.mRatelimitTouchEvents) {
+//          limitEventRate(event);
+//      }
         return true;
     };
 
@@ -310,6 +316,8 @@ public class FFPlayerView extends GLSurfaceView_SDL implements MediaPlayerContro
             int pressure, int radius);
 
     public static native int nativeKey(int keyCode, int down);
+    public static native int nativeGetDuration();
+    public static native int nativeGetCurrentPosition();
 
     public static native void nativeTouchpad(int x, int y, int down, int multitouch);
 

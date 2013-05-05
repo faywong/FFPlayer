@@ -46,6 +46,27 @@
 #include "unicodestuff.h"
 #include "atan2i.h"
 
+#include "oscl.h"
+
+oscl_player_adapter g_android_player_adapter = {
+    .getName = NULL,
+    .getVersion = NULL,
+    .setUp = NULL,
+    .tearDown = NULL,
+    .getCurrentPosition = NULL,
+    .getDuration = NULL,
+    .getMetaData = NULL,
+};
+
+oscl_player_adapter* get_player_adapter_impl(os_platform os)
+{
+    if (ANDROID_OS == os) {
+        return &g_android_player_adapter;
+    } else {
+        return NULL;
+    }
+}
+
 SDLKey SDL_android_keymap[KEYCODE_LAST+1];
 
 static inline SDL_scancode TranslateKey(int scancode)
@@ -752,25 +773,47 @@ Java_org_ffmpeg_ffplayer_render_FFPlayerView_nativeKey( JNIEnv*  env, jobject th
 		return 1;
 #endif
 
-	if( isTrackballUsed )
-		if( processAndroidTrackball(key, action) )
+	if (isTrackballUsed)
+		if (processAndroidTrackball(key, action) )
 			return 1;
 	if( key == rightClickKey && rightClickMethod == RIGHT_CLICK_WITH_KEY )
 	{
 		SDL_ANDROID_MainThreadPushMouseButton( action ? SDL_PRESSED : SDL_RELEASED, SDL_BUTTON_RIGHT );
 		return 1;
 	}
-	if( (key == leftClickKey && leftClickMethod == LEFT_CLICK_WITH_KEY) || (clickMouseWithDpadCenter && key == KEYCODE_DPAD_CENTER) )
+	if ((key == leftClickKey && leftClickMethod == LEFT_CLICK_WITH_KEY) || (clickMouseWithDpadCenter && key == KEYCODE_DPAD_CENTER) )
 	{
 		SDL_ANDROID_MainThreadPushMouseButton( action ? SDL_PRESSED : SDL_RELEASED, SDL_BUTTON_LEFT );
 		return 1;
 	}
 
-	if( TranslateKey(key) == SDLK_NO_REMAP || TranslateKey(key) == SDLK_UNKNOWN )
+	if(TranslateKey(key) == SDLK_NO_REMAP || TranslateKey(key) == SDLK_UNKNOWN)
 		return 0;
 
 	SDL_ANDROID_MainThreadPushKeyboardKey( action ? SDL_PRESSED : SDL_RELEASED, TranslateKey(key) );
 	return 1;
+}
+
+JNIEXPORT jint JNICALL
+Java_org_ffmpeg_ffplayer_render_FFPlayerView_nativeGetDuration(JNIEnv*  env, jobject thiz)
+{
+	int duration = 0;
+	oscl_player_adapter* adapter = get_player_adapter_impl(ANDROID_OS);
+	if (NULL != adapter && NULL != adapter->getDuration) {
+		duration = adapter->getDuration();
+	}
+	return duration;
+}
+
+JNIEXPORT jint JNICALL
+Java_org_ffmpeg_ffplayer_render_FFPlayerView_nativeGetCurrentPosition(JNIEnv*  env, jobject thiz)
+{
+	int current_position = 0;
+	oscl_player_adapter* adapter = get_player_adapter_impl(ANDROID_OS);
+	if (NULL != adapter && NULL != adapter->getCurrentPosition) {
+		current_position = adapter->getCurrentPosition();
+	}
+	return current_position;
 }
 
 static char * textInputBuffer = NULL;

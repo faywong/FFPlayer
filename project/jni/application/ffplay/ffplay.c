@@ -299,8 +299,8 @@ static int android_player_adapter_get_current_position()
 {
     int cur_position = 0;
     if (NULL != is) {
-        cur_position = get_master_clock(is) / AV_TIME_BASE;
-        av_log(NULL, AV_LOG_DEBUG, "cur_position:%d seconds", cur_position);
+        cur_position = get_master_clock(is) * 1000 / AV_TIME_BASE;
+        av_log(NULL, AV_LOG_DEBUG, "cur_position:%d miniseconds", cur_position);
     }
     return cur_position;
 }
@@ -309,8 +309,8 @@ static int android_player_adapter_get_duration()
 {
     int duration = 0;
     if (NULL != is) {
-        duration = is->ic->duration / AV_TIME_BASE;
-        av_log(NULL, AV_LOG_DEBUG, "duration:%d seconds", duration);
+        duration = is->ic->duration * 1000 / AV_TIME_BASE;
+        av_log(NULL, AV_LOG_DEBUG, "duration:%d miniseconds", duration);
     }
     return duration;
 }

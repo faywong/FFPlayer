@@ -1469,20 +1469,6 @@ public class Settings {
             Bitmap    bmp;
 
             public ScreenEdgesCalibrationTool(FFPlayer _p) {
-                p = _p;
-                img = new ImageView(p);
-                img.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
-                        ViewGroup.LayoutParams.FILL_PARENT));
-                img.setScaleType(ImageView.ScaleType.MATRIX);
-                bmp = BitmapFactory.decodeResource(p.getResources(), R.drawable.calibrate);
-                img.setImageBitmap(bmp);
-                Matrix m = new Matrix();
-                RectF src = new RectF(0, 0, bmp.getWidth(), bmp.getHeight());
-                RectF dst = new RectF(TouchscreenCalibration[0], TouchscreenCalibration[1],
-                        TouchscreenCalibration[2], TouchscreenCalibration[3]);
-                m.setRectToRect(src, dst, Matrix.ScaleToFit.FILL);
-                img.setImageMatrix(m);
-                p.getVideoLayout().addView(img);
             }
 
             public void onTouchEvent(final MotionEvent ev) {
@@ -1541,49 +1527,11 @@ public class Settings {
             ImageView   boundary      = null;
             Bitmap      boundaryBmp   = null;
             int         currentButton = 0;
-            int         buttons[]     = { R.drawable.dpad, R.drawable.keyboard, R.drawable.b1,
+            int         buttons[]     = { /*R.drawable.dpad, R.drawable.keyboard, R.drawable.b1,
                                               R.drawable.b2, R.drawable.b3, R.drawable.b4,
-                                              R.drawable.b5, R.drawable.b6 };
+                                              R.drawable.b5, R.drawable.b6*/ };
 
             public CustomizeScreenKbLayoutTool(FFPlayer _p) {
-                p = _p;
-                layout = new FrameLayout(p);
-                p.getVideoLayout().addView(layout);
-                boundary = new ImageView(p);
-                boundary.setLayoutParams(new ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.FILL_PARENT, ViewGroup.LayoutParams.FILL_PARENT));
-                boundary.setScaleType(ImageView.ScaleType.MATRIX);
-                boundaryBmp = BitmapFactory.decodeResource(p.getResources(), R.drawable.rectangle);
-                boundary.setImageBitmap(boundaryBmp);
-                layout.addView(boundary);
-                currentButton = 0;
-                if (TouchscreenKeyboardTheme == 2) {
-                    int buttons2[] = { R.drawable.sun_dpad, R.drawable.sun_keyboard,
-                            R.drawable.sun_b1, R.drawable.sun_b2, R.drawable.sun_b3,
-                            R.drawable.sun_b4, R.drawable.sun_b5, R.drawable.sun_b6 };
-                    buttons = buttons2;
-                }
-
-                for (int i = 0; i < ScreenKbControlsLayout.length; i++) {
-                    imgs[i] = new ImageView(p);
-                    imgs[i].setLayoutParams(new ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.FILL_PARENT, ViewGroup.LayoutParams.FILL_PARENT));
-                    imgs[i].setScaleType(ImageView.ScaleType.MATRIX);
-                    bmps[i] = BitmapFactory.decodeResource(p.getResources(), buttons[i]);
-                    imgs[i].setImageBitmap(bmps[i]);
-                    imgs[i].setAlpha(128);
-                    layout.addView(imgs[i]);
-                    Matrix m = new Matrix();
-                    RectF src = new RectF(0, 0, bmps[i].getWidth(), bmps[i].getHeight());
-                    RectF dst = new RectF(ScreenKbControlsLayout[i][0],
-                            ScreenKbControlsLayout[i][1], ScreenKbControlsLayout[i][2],
-                            ScreenKbControlsLayout[i][3]);
-                    m.setRectToRect(src, dst, Matrix.ScaleToFit.FILL);
-                    imgs[i].setImageMatrix(m);
-                }
-                boundary.bringToFront();
-
-                setupButton(true);
             }
 
             void setupButton(boolean undo) {
@@ -1845,44 +1793,6 @@ public class Settings {
         FFPlayer  p;
 
         void startCalibration(final FFPlayer _p) {
-            p = _p;
-            img = new ImageView(p);
-            img.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
-                    ViewGroup.LayoutParams.FILL_PARENT));
-            img.setScaleType(ImageView.ScaleType.MATRIX);
-            bmp = BitmapFactory.decodeResource(p.getResources(), R.drawable.calibrate);
-            img.setImageBitmap(bmp);
-            Matrix m = new Matrix();
-            RectF src = new RectF(0, 0, bmp.getWidth(), bmp.getHeight());
-            RectF dst = new RectF(p.getVideoLayout().getWidth() / 2 - 50, p.getVideoLayout()
-                    .getHeight() / 2 - 50, p.getVideoLayout().getWidth() / 2 + 50, p
-                    .getVideoLayout().getHeight() / 2 + 50);
-            m.setRectToRect(src, dst, Matrix.ScaleToFit.FILL);
-            img.setImageMatrix(m);
-            p.getVideoLayout().addView(img);
-            numEvents = 0;
-            AccelerometerReader.gyro.x1 = 100;
-            AccelerometerReader.gyro.x2 = -100;
-            AccelerometerReader.gyro.xc = 0;
-            AccelerometerReader.gyro.y1 = 100;
-            AccelerometerReader.gyro.y2 = -100;
-            AccelerometerReader.gyro.yc = 0;
-            AccelerometerReader.gyro.z1 = 100;
-            AccelerometerReader.gyro.z2 = -100;
-            AccelerometerReader.gyro.zc = 0;
-            AccelerometerReader.gyro.registerListener(p, this);
-            (new Thread(new Runnable() {
-                public void run() {
-                    for (int count = 1; count < 10; count++) {
-                        p.setText("" + count + "0% ...");
-                        try {
-                            Thread.sleep(500);
-                        } catch (Exception e) {
-                        }
-                    }
-                    finishCalibration(p);
-                }
-            })).start();
         }
 
         public void onSensorChanged(SensorEvent event) {
@@ -2158,16 +2068,6 @@ public class Settings {
                 TouchscreenKeyboardTheme = 0;
             if (TouchscreenKeyboardTheme > 2)
                 TouchscreenKeyboardTheme = 2;
-
-            if (TouchscreenKeyboardTheme == 0) {
-                nativeSetupScreenKeyboardButtons(loadRaw((Activity) context, R.raw.ultimatedroid));
-            }
-            if (TouchscreenKeyboardTheme == 1) {
-                nativeSetupScreenKeyboardButtons(loadRaw((Activity) context, R.raw.simpletheme));
-            }
-            if (TouchscreenKeyboardTheme == 2) {
-                nativeSetupScreenKeyboardButtons(loadRaw((Activity) context, R.raw.sun));
-            }
         }
     }
 
@@ -2473,7 +2373,7 @@ public class Settings {
     /*
      * Also joystick and text input button added
      */
-    public static int           ScreenKbControlsLayout[][]                    = new int[8][4];
+    public static int           ScreenKbControlsLayout[][]                    = new int[0][0];
 
     public static boolean       ScreenKbControlsShown[]                       = new boolean[8];
 

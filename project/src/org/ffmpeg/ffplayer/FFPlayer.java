@@ -87,10 +87,10 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
             }
 
             public void run() {
-                try {
+/*                try {
                     Thread.sleep(200);
                 } catch (InterruptedException e) {
-                }
+                }*/
 
                 if (p.mAudioThread == null) {
                     System.out.println("libSDL: Loading libraries");
@@ -139,34 +139,8 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
         if (Settings.InhibitSuspend)
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-        System.out.println("libSDL: Creating startup screen");
-        _layout = new LinearLayout(this);
-        _layout.setOrientation(LinearLayout.VERTICAL);
-        _layout.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
-                ViewGroup.LayoutParams.FILL_PARENT));
-        _layout2 = new LinearLayout(this);
-        _layout2.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        _layout.addView(_layout2);
-
-        ImageView img = new ImageView(this);
-
-        img.setScaleType(ImageView.ScaleType.FIT_CENTER /* FIT_XY */);
-        try {
-            img.setImageDrawable(Drawable
-                    .createFromStream(getAssets().open("logo.png"), "logo.png"));
-        } catch (Exception e) {
-            img.setImageResource(R.drawable.publisherlogo);
-        }
-        img.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
-                ViewGroup.LayoutParams.FILL_PARENT));
-        _layout.addView(img);
-
+        
         _videoLayout = new FrameLayout(this);
-        _videoLayout.addView(_layout);
-
         _ad = new Advertisement(this);
         if (_ad.getView() != null) {
             _videoLayout.addView(_ad.getView());
@@ -233,10 +207,8 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
         if (Settings.UseAccelerometerAsArrowKeys || Settings.AppUsesAccelerometer)
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        _videoLayout.removeView(_layout);
         if (_ad.getView() != null)
             _videoLayout.removeView(_ad.getView());
-        _layout = null;
         _layout2 = null;
         _tv = null;
         _inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -388,31 +360,6 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
                 return false;
             }
         }
-        ;
-        _screenKeyboard = new EditText(this);
-        // This code does not work
-        /*
-         * _screenKeyboard.setMaxLines(100); ViewGroup.LayoutParams layout =
-         * _screenKeyboard.getLayoutParams(); if( layout != null ) {
-         * layout.width = ViewGroup.LayoutParams.FILL_PARENT; layout.height =
-         * ViewGroup.LayoutParams.FILL_PARENT;
-         * _screenKeyboard.setLayoutParams(layout); }
-         * _screenKeyboard.setGravity(android.view.Gravity.BOTTOM |
-         * android.view.Gravity.LEFT);
-         */
-        String hint = _screenKeyboardHintMessage;
-        _screenKeyboard.setHint(hint != null ? hint : getString(R.string.text_edit_click_here));
-        _screenKeyboard.setText(oldText);
-        _screenKeyboard.setOnKeyListener(new simpleKeyListener(this, sendBackspace));
-        _videoLayout.addView(_screenKeyboard);
-        // _screenKeyboard.setKeyListener(new
-        // TextKeyListener(TextKeyListener.Capitalize.NONE, false));
-        _screenKeyboard.setInputType(InputType.TYPE_CLASS_TEXT
-                | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        _screenKeyboard.setFocusableInTouchMode(true);
-        _screenKeyboard.setFocusable(true);
-        _screenKeyboard.requestFocus();
-        _inputManager.showSoftInput(_screenKeyboard, InputMethodManager.SHOW_FORCED);
     };
 
     @Override
@@ -427,9 +374,6 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
             }
         }
         DefaultRender.nativeTextInputFinished();
-        _inputManager.hideSoftInputFromWindow(_screenKeyboard.getWindowToken(), 0);
-        _videoLayout.removeView(_screenKeyboard);
-        _screenKeyboard = null;
         mVideoView.setFocusableInTouchMode(true);
         mVideoView.setFocusable(true);
         mVideoView.requestFocus();
@@ -921,7 +865,6 @@ public class FFPlayer extends Activity implements FFPlayerView.ScreenKeyboardHel
     private static AudioThread          mAudioThread               = null;
 
     private TextView                    _tv                        = null;
-    private LinearLayout                _layout                    = null;
     private LinearLayout                _layout2                   = null;
     private Advertisement               _ad                        = null;
 

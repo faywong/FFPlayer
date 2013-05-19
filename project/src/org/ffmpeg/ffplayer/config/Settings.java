@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.zip.GZIPInputStream;
 
-import org.ffmpeg.ffplayer.FFPlayer;
+import org.ffmpeg.ffplayer.app.FFPlayer;
 import org.ffmpeg.ffplayer.render.SDLInput;
 import org.ffmpeg.ffplayer.render.SDL_Keys;
 import org.ffmpeg.ffplayer.render.SDLInput.Mouse;

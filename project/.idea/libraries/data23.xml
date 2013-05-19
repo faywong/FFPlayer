@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="data2">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/jni/application/test-opengl/AndroidData/data2.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

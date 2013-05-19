@@ -32,7 +32,7 @@ import android.media.MediaRecorder.AudioSource;
 import java.util.concurrent.Semaphore;
 
 import org.ffmpeg.ffplayer.config.Settings;
-import org.ffmpeg.ffplayer.FFPlayer;
+import org.ffmpeg.ffplayer.app.FFPlayer;
 
 
 public class AudioThread

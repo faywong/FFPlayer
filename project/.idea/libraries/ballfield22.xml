@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="ballfield2">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/jni/application/sdl-1.3-test/AndroidData/ballfield2.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

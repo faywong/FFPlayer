@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="ballfield">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/jni/application/regression/AndroidData/ballfield.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

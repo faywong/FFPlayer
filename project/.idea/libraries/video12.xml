@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="video1">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/AndroidData/video.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

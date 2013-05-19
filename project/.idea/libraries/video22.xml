@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="video2">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/jni/application/ffplay/AndroidData/video.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

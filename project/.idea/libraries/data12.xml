@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="data1">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/jni/application/grafx2/AndroidData/data.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

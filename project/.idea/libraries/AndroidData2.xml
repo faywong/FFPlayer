@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="AndroidData">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/jni/application/testmusic/AndroidData/MilkyTracker-ExampleSongs.zip!/" />
+      <root url="jar://$PROJECT_DIR$/jni/application/testmusic/AndroidData/ballfield2.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

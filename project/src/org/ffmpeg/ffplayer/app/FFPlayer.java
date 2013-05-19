@@ -20,7 +20,7 @@
  3. This notice may not be removed or altered from any source distribution.
  */
 
-package org.ffmpeg.ffplayer;
+package org.ffmpeg.ffplayer.app;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -65,6 +65,7 @@ import java.util.concurrent.Semaphore;
 import android.content.pm.ActivityInfo;
 import android.view.Display;
 import android.text.InputType;
+import org.ffmpeg.ffplayer.R;
 import org.ffmpeg.ffplayer.render.*;
 import org.ffmpeg.ffplayer.config.*;
 import org.ffmpeg.ffplayer.util.*;

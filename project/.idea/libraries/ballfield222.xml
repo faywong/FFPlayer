@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="ballfield22">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/jni/application/test32bpp/AndroidData/ballfield2.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="ballfield1">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/jni/application/hello-gl2/AndroidData/ballfield.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="abstractsun">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/themes/Sun/abstractsun.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

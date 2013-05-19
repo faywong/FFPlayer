@@ -177,5 +177,180 @@
     <string name="cancel_download_resume">You can resume it later, the data will not be downloaded twice.</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
+    <string name="sidebar_local">local</string>
+    <string name="sidebar_network">network</string>
+    <string name="sidebar_history">network</string>
+    <string name="add_custom_path">Add a custom path</string>
+    <string name="internal_memory">Internal memory</string>
+    <string name="validation">Are you sure?</string>
+    <string name="confirm_delete">Delete the file \'%1$s\' ?</string>
+    <string name="directory">Directory</string>
+    <string name="directories">Directories</string>
+    <string name="loading">Loading</string>
+    <string name="please_wait">Please wait…</string>
+    <string name="nomedia">No media files found, please transfer files to your device or adjust your preferences.</string>
+    <string name="mediafiles">Media files</string>
+    <string name="notavailable">not available</string>
+    <string name="nosubdirectory">No subdirectories.</string>
+    <string name="nohistory">You have no playback history yet.</string>
+    <string name="title">Title</string>
+    <string name="info">Information</string>
+    <string name="empty" translatable="false"></string>
+    <string name="time_0" translatable="false">0:00</string>
+    <string name="speed_placeholder" translatable="false">1.00x</string>
+    <string name="load_1_period" translatable="false">.</string>
+    <string name="load_2_period" translatable="false">..</string>
+    <string name="load_3_period" translatable="false">...</string>
+    <string name="play_as_video">Play as video</string>
+    <string name="tools">Tools</string>
+    <string name="playback_speed">Playback speed</string>
+    <string name="sleep_title">Sleep timer</string>
+    <string name="sleep_cancel">Cancel sleep timer</string>
+    <string name="jump_to_time">Jump to Time</string>
 
+    <string name="open">Open</string>
+    <string name="open_mrl">Open MRL</string>
+    <string name="open_mrl_dialog_title">Open network stream</string>
+    <string name="open_mrl_dialog_msg">Enter network MRL: e.g. http://, mms:// or rtsp://</string>
+    <string name="error_not_compatible">Sorry, your device is currently not supported by this version of VLC for Android™.</string>
+    <string name="error_problem">Sorry, VLC for Android had a problem loading and had to close.</string>
+    <string name="error_message_is">The error message is (please mention this when debugging):\n</string>
+    <string name="empty" translatable="false"></string>
+    <string name="time_0" translatable="false">0:00</string>
+    <string name="speed_placeholder" translatable="false">1.00x</string>
+    <string name="load_1_period" translatable="false">.</string>
+    <string name="load_2_period" translatable="false">..</string>
+    <string name="load_3_period" translatable="false">...</string>
+    <string name="colon" translatable="false">:</string>
+    <string name="plus" translatable="false">+</string>
+    <string name="minus" translatable="false">&#8722;</string>
+
+    <string name="encountered_error_title">Playback error</string>
+    <string name="encountered_error_message">VLC encountered an error with this media.\nPlease try refreshing the media library.</string>
+
+    <!-- About -->
+    <string name="app_name_full">FFPlayer</string>
+    <string name="licence">License</string>
+    <string name="revision">Revision</string>
+    <string name="about">About</string>
+    <string name="about_text">VLC for Android™ is a port of VLC media player, the popular open source media player. The Android™ version can read most files and network streams.</string>
+    <string name="compiled_by">This version of VLC is compiled by:</string>
+    <string name="vlc_authors">VLC Authors.</string>
+    <string name="about_link" translatable="false">        &lt;a href=&quot;http://www.videolan.org/vlc/&quot;&gt;http://www.videolan.org/vlc/&lt;/a&gt;</string>
+    <string name="about_copyright" translatable="false">Copyleft &#169; 1996&#8211;2013 by VideoLAN.\n</string>
+    <string name="authors" translatable="false">Sébastien&#160;Toque, Rafaël&#160;Carré, Jean-Baptiste&#160;Kempf, Edward&#160;Wang, Michael&#160;Merg, Ludovic&#160;Fauvet, Adrien&#160;Maglo, Rémi&#160;Duraffort, Dominique&#160;Martinet, Jean-Philippe&#160;André, Martin&#160;Storsjö, Alexandre&#160;Perraud, Hugo&#160;Beauzée-Luyssen, Felix&#160;Paul&#160;Kühne, John Mooring, Pavol Rusnak, Rohit Yadav, Tanguy Pruvot, Thomas Clavier, Asad Mehmood, Christoph Miebach, David Carré, Garret Kelly, Philipp Dreimann, Walter Heck.</string>
+
+    <!-- Preferences -->
+    <string name="preferences">Preferences</string>
+    <string name="library_prefs_category">Media library</string>
+    <string name="directories_summary">Select directories to include in the media library</string>
+    <string name="add_custom_path">Add a custom path</string>
+    <string name="add_custom_path_description">Enter additional custom directory to scan:</string>
+    <string name="remove_custom_path">Remove custom path</string>
+    <string name="main_prefs_category">Main</string>
+    <string name="screen_orientation">Video screen orientation</string>
+    <string name="screen_orientation_sensor">Automatic (sensor)</string>
+    <string name="screen_orientation_start_lock">Locked at start</string>
+    <string name="screen_orientation_portrait">Portrait</string>
+    <string name="screen_orientation_landscape">Landscape</string>
+    <string name="screen_orientation_reverse_portrait">Reverse portrait</string>
+    <string name="screen_orientation_reverse_landscape">Reverse landscape</string>
+    <string name="enable_brightness_gesture">Enable brightness gesture</string>
+    <string name="enable_brightness_gesture_summary">Control brightness by gesture during video playback</string>
+    <string name="enable_headset_detection">Detect headset</string>
+    <string name="enable_headset_detection_summary">Pause on headset removal; resume on headset insertion</string>
+    <string name="enable_wheel_bar">Enable wheel bar</string>
+    <string name="enable_wheel_bar_summary">Alternate-style seek bar for the video interface</string>
+    <string name="enable_steal_remote_control">Exclusive headset remote control</string>
+    <string name="enable_steal_remote_control_summary">Avoid conflicts by stealing the remote control from other apps. This prevents dialing on double click on HTC phones.</string>
+    <string name="performance_prefs_category">Performance</string>
+    <string name="chroma_format">Force video chroma</string>
+    <string name="chroma_format_summary">RGB 32-bit: default chroma\nRGB 16-bit: better performance but lower quality\nYUV: best performance but does not work on all devices. Android 2.3 and later only.</string>
+    <string name="enable_iomx">Hardware accelerated decoding</string>
+    <string name="enable_iomx_summary">Improves performance, but may not work with all devices.</string>
+    <string name="enable_time_stretching_audio">Time-stretching audio</string>
+    <string name="enable_time_stretching_audio_summary">Speed up and slow down audio without changing the pitch (requires a fast device).</string>
+    <string name="other_prefs_category">Other</string>
+    <string name="clear_history">Clear search history</string>
+    <string name="clear_media_db">Clear media database</string>
+    <string name="media_db_cleared">Media database cleared!</string>
+    <string name="subtitles_text_encoding">Subtitle text encoding</string>
+
+    <string name="debug_logs">Debug logs</string>
+    <string name="start_logging">Start logging</string>
+    <string name="stop_logging">Stop logging</string>
+    <string name="clear_log">Clear log</string>
+    <string name="copy_to_clipboard">Copy to clipboard</string>
+    <string name="copied_to_clipboard">Copied log to clipboard.</string>
+
+    <string name="advanced_prefs_category">Advanced</string>
+    <string name="advanced_debugging">Advanced debugging</string>
+    <string name="aout">Audio output</string>
+    <string name="aout_summary">Change the method that VLC uses to output audio.</string>
+    <string name="aout_audiotrack">AudioTrack (native)</string>
+    <string name="aout_audiotrack_java">AudioTrack (Java)</string>
+    <string name="aout_opensles">OpenSL ES</string>
+    <string name="enable_verbose_mode">Verbose</string>
+    <string name="enable_verbose_mode_summary">Increase the verbosity (logcat)</string>
+    <string name="set_locale">Set locale</string>
+    <string name="set_locale_detail">Leave blank to reset</string>
+    <string name="set_locale_popup">Quit and reset VLC for changes to take effect.</string>
+    <string name="quit">Quit application</string>
+
+    <string name="play">Play</string>
+    <string name="play_from_start">Play from start</string>
+    <string name="play_as_audio">Play as audio</string>
+    <string name="play_as_video">Play as video</string>
+    <string name="append">Append</string>
+    <string name="play_all">Play all</string>
+    <string name="append_all">Append all</string>
+    <string name="last_playlist">Last playlist</string>
+    <string name="delete">Delete</string>
+    <string name="set_song">Set as ringtone</string>
+    <string name="info">Information</string>
+    <string name="confirm_delete">Delete the file \'%1$s\' ?</string>
+    <string name="ringtone_set">\'%1$s\' was set as the ringtone.</string>
+    <string name="ringtone_error">An error occurred while setting the ringtone.</string>
+    <string name="pause">Pause</string>
+    <string name="not_show_again">"Don't show this message again."</string>
+    <string name="beta_warning">This is a beta version.\n\nThis version is NOT STABLE!\n\nDo NOT use, unless you know what you are doing.\n\nIt might kill your kitten and destroy your house.\nUse it at your own risk.\n\nHave Fun! :)</string>
+    <string name="info_title">VLC Beta</string>
+    <string name="unknown_artist">Unknown Artist</string>
+    <string name="unknown_album">Unknown Album</string>
+    <string name="unknown_genre">Unknown Genre</string>
+    <string name="songs">Songs</string>
+
+    <string name="app_name" translatable="false">FFPlayer</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="other">Other</string>
+    <string name="filebrowser_title">Select media to play</string>
+    <string name="sortby">Sort by…</string>
+    <string name="sortby_name">Name</string>
+    <string name="sortby_length">Length</string>
+    <string name="searchable_hint">Search…</string>
+    <string name="history">History</string>
+    <string name="refresh">Refresh</string>
+    <string name="parent_folder">Up to parent folder</string>
+    <string name="thumbnail">Thumbnail</string>
+    <plurals name="songs_quantity">
+        <item quantity="one">1 song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
+
+    <string name="artists">Artists</string>
+    <string name="albums">Albums</string>
+
+    <plurals name="albums_quantity">
+        <item quantity="one">1 album</item>
+        <item quantity="other">%d albums</item>
+    </plurals>
+    <plurals name="subfolders_quantity">
+        <item quantity="one">1 subfolder</item>
+        <item quantity="other">%d subfolders</item>
+    </plurals>
+    <plurals name="mediafiles_quantity">
+        <item quantity="one">1 media file</item>
+        <item quantity="other">%d media files</item>
+    </plurals>
 </resources>

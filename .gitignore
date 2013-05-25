@@ -7,6 +7,7 @@ project/obj
 project/local.properties
 project/res/values*
 project/jni/application/*/libapplication*.so
+java-libs/ActionBarSherlock/bin/
 
 #################
 ## Eclipse

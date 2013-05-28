@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">FFPlayer</string>
+
 
 
     <string name="init">Initializing</string>
-    <string name="please_wait">Please wait while data is being downloaded</string>
+
 
     <string name="device_config">Device configuration</string>
     <string name="device_change_cfg">Change device configuration</string>
@@ -180,7 +180,7 @@
     <string name="sidebar_local">local</string>
     <string name="sidebar_network">network</string>
     <string name="sidebar_history">network</string>
-    <string name="add_custom_path">Add a custom path</string>
+
     <string name="internal_memory">Internal memory</string>
     <string name="validation">Are you sure?</string>
     <string name="confirm_delete">Delete the file \'%1$s\' ?</string>
@@ -201,7 +201,7 @@
     <string name="load_1_period" translatable="false">.</string>
     <string name="load_2_period" translatable="false">..</string>
     <string name="load_3_period" translatable="false">...</string>
-    <string name="play_as_video">Play as video</string>
+
     <string name="tools">Tools</string>
     <string name="playback_speed">Playback speed</string>
     <string name="sleep_title">Sleep timer</string>
@@ -215,12 +215,7 @@
     <string name="error_not_compatible">Sorry, your device is currently not supported by this version of VLC for Android™.</string>
     <string name="error_problem">Sorry, VLC for Android had a problem loading and had to close.</string>
     <string name="error_message_is">The error message is (please mention this when debugging):\n</string>
-    <string name="empty" translatable="false"></string>
-    <string name="time_0" translatable="false">0:00</string>
-    <string name="speed_placeholder" translatable="false">1.00x</string>
-    <string name="load_1_period" translatable="false">.</string>
-    <string name="load_2_period" translatable="false">..</string>
-    <string name="load_3_period" translatable="false">...</string>
+
     <string name="colon" translatable="false">:</string>
     <string name="plus" translatable="false">+</string>
     <string name="minus" translatable="false">&#8722;</string>
@@ -307,8 +302,8 @@
     <string name="last_playlist">Last playlist</string>
     <string name="delete">Delete</string>
     <string name="set_song">Set as ringtone</string>
-    <string name="info">Information</string>
-    <string name="confirm_delete">Delete the file \'%1$s\' ?</string>
+
+
     <string name="ringtone_set">\'%1$s\' was set as the ringtone.</string>
     <string name="ringtone_error">An error occurred while setting the ringtone.</string>
     <string name="pause">Pause</string>
@@ -321,8 +316,8 @@
     <string name="songs">Songs</string>
 
     <string name="app_name" translatable="false">FFPlayer</string>
-    <string name="ok">OK</string>
-    <string name="cancel">Cancel</string>
+
+
     <string name="other">Other</string>
     <string name="filebrowser_title">Select media to play</string>
     <string name="sortby">Sort by…</string>

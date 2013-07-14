@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FFPlayer</string>
-
-
     <string name="init">Initializing</string>
     <string name="please_wait">Please wait while data is being downloaded</string>
 
@@ -177,5 +175,29 @@
     <string name="cancel_download_resume">You can resume it later, the data will not be downloaded twice.</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
-
+    <!-- Category label on Library screen -->
+    <string name="browse_menu">Artists</string>
+    <!-- Category label on Library screen -->
+    <string name="albums_menu">Albums</string>
+    <string name="tracks_menu">Songs</string>
+    <string name="playlists_menu">Playlists</string>
+    <!-- label underneath icon used to indicate that no sd card is present -->
+    <string name="sdcard_missing_message">Your phone doesn\'t have an SD card inserted.</string>
+    <string name="sdcard_error_title">SD card error</string>
+    <string name="sdcard_error_message">An error was encountered on your SD card.</string>
+    <string name="sdcard_error_title_nosdcard">USB storage error</string>
+    <string name="sdcard_error_message_nosdcard">An error was encountered on your USB storage.</string>
+    <string name="sdcard_busy_title">SD card unavailable</string>
+    <string name="sdcard_busy_message">Your SD card is busy.</string>
+    <string name="sdcard_busy_title_nosdcard">USB storage unavailable</string>
+    <string name="sdcard_busy_message_nosdcard">Your USB storage is busy.</string>
+    <string name="sdcard_missing_title">No SD card</string>
+    <string name="sdcard_missing_title_nosdcard">No USB storage</string>
+    <string name="sdcard_missing_message_nosdcard">Your phone doesn\'t have USB storage.</string>
+    <string name="queue">Current playlist</string>
+    <string name="new_playlist">New</string>
+    <string name="scanning">Scanning SD card\u2026</string>
+    <string name="scanning_nosdcard">Scanning USB storage\u2026</string>
+    <string name="videos_title">Videos</string>
+    <string name="no_videos_title">No videos</string>
 </resources>

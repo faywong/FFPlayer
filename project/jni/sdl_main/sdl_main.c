@@ -121,6 +121,10 @@ Java_org_ffmpeg_ffplayer_render_DefaultRender_nativeInit(JNIEnv* env, jobject th
 	(*env)->ReleaseStringUTFChars(env, jmediaurl, jstr);
 
 	__android_log_print(ANDROID_LOG_INFO, "libSDL", "mediaurl:\"%s\"", mediaurl);
+        if (NULL == mediaurl) {
+            __android_log_print(ANDROID_LOG_INFO, "libSDL", "mediaurl invalid, return!!!");
+            return;
+        }
 
 	chdir(mediaurl);
 

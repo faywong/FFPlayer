@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FFPlayer resources that may need to keep pace with the evolution of ffmpeg -->
+<resources>
+    <string-array name="protocols">
+        <item>http</item>
+        <item>rtsp</item>
+        <item>rtmp</item>
+        <item>sap</item>
+        <item>sctp</item>
+        <item>tcp</item>
+        <item>tls</item>
+        <item>udp</item>
+    </string-array>
+</resources>

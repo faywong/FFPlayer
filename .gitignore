@@ -4,6 +4,8 @@ project/gen
 project/libs
 project/assets
 project/obj
-project/local.properties
-project/res/values*
+project/*.properties
 project/jni/application/*/libapplication*.so
+project/.idea
+.gitignore
+*.swp

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright (C) 2007 The Android Open Source Project
+<!--
+     Copyright (C) 2007 The Android Open Source Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -17,21 +18,50 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center_vertical" >
+    android:gravity="center_vertical"
+    android:orientation="vertical" >
+
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" 
+        android:orientation="horizontal" >
+
+        <Spinner
+            android:id="@+id/network_protocol_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+        <EditText 
+            android:id="@+id/url_portion"
+            android:layout_width="0dip"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:inputType="textUri|textMultiLine"
+            android:hint="@string/network_source_hint">
+        </EditText>    
+        <Button
+            android:id="@+id/network_play_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right|center_vertical"
+            android:text="@string/network_play_button_label"
+            >
+            
+        </Button>
+        
+        </LinearLayout>
 
     <include layout="@layout/sd_error" />
 
-    <include layout="@layout/buttonbar" />
+    <!-- <include layout="@layout/buttonbar" /> -->
 
     <org.ffmpeg.ffplayer.util.TouchInterceptor
         android:id="@android:id/list"
         android:layout_width="match_parent"
         android:layout_height="0dip"
         android:layout_weight="1"
-        android:textSize="18sp"
         android:drawSelectorOnTop="false"
-        android:fastScrollEnabled="true" /> 
+        android:fastScrollEnabled="true"
+        android:textSize="18sp" />
 
     <include layout="@layout/nowplaying" />
 

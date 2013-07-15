@@ -80,34 +80,56 @@ public class FFPlayerView extends GLSurfaceView_SDL implements MediaPlayerContro
 
     @SuppressLint("NewApi")
         private String getRealPathFromURI(Uri contentUri) {
+        if (null == contentUri) {
+            return null;
+        }
         String[] proj = { MediaStore.Video.Media.DATA };
         CursorLoader loader = new CursorLoader(mContext, contentUri, proj, null, null, null);
         Cursor cursor = loader.loadInBackground();
+        if (cursor == null) {
+            return null;
+        }
         int column_index = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA);
         cursor.moveToFirst();
         return cursor.getString(column_index);
     }
 
-    public void setMediaURI(Uri uri) {
+    public boolean setMediaURI(Uri uri) {
         Log.d(LOG_TAG, "setMediaURI:" + uri);
         if (null == uri) {
-            return;
+            return false;
         }
 
         Settings.mediaUrl = getRealPathFromURI(uri);
-        Log.d(LOG_TAG, "Case 1 Settings.mediaUrl:" + Settings.mediaUrl);
 
+        Log.d(LOG_TAG, "Case 1 Settings.mediaUrl: " + Settings.mediaUrl
+                + " uri.getEncodedPath: " +  uri.getEncodedPath()
+                + " uri.getPath: " + uri.getPath());
+
+        if (null != Settings.mediaUrl) {
+            return true;
+        }
+        
         String scheme = uri.getScheme();
-        if (scheme == null || scheme.equals("file")) {
+        
+        if (scheme.equals("file")) {
             Log.d(LOG_TAG, "setMediaURI() path:" + uri.getPath());
             Settings.mediaUrl = uri.getPath();
-            return;
+            Log.d(LOG_TAG, "Case 3 Settings.mediaUrl:" + Settings.mediaUrl);
+        } else {
+            Settings.mediaUrl = uri.toString();
+            Log.d(LOG_TAG, "Case 4 Settings.mediaUrl:" + Settings.mediaUrl);
         }
+        Log.d(LOG_TAG, "Case 5 Settings.mediaUrl:" + Settings.mediaUrl);
+
+        return true;
     }
 
-    public void setMediaURI(Uri uri, Map<String, String> headers) {
+    public boolean setMediaURI(Uri uri, Map<String, String> headers) {
         if (null == headers) {
-            setMediaURI(uri);
+            return setMediaURI(uri);
+        } else {
+            return false;
         }
     }
 

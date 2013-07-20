@@ -1,0 +1,1 @@
+--arch=arm --target-os=linux --enable-cross-compile --cross-prefix= --sysroot=/ --enable-shared --enable-static --enable-avresample --extra-cflags='' --extra-ldflags='' --extra-version=.android

@@ -19,9 +19,15 @@
 #ifndef AVRESAMPLE_VERSION_H
 #define AVRESAMPLE_VERSION_H
 
+/**
+ * @file
+ * @ingroup lavr
+ * Libavresample version macros.
+ */
+
 #define LIBAVRESAMPLE_VERSION_MAJOR  1
-#define LIBAVRESAMPLE_VERSION_MINOR  0
-#define LIBAVRESAMPLE_VERSION_MICRO  1
+#define LIBAVRESAMPLE_VERSION_MINOR  1
+#define LIBAVRESAMPLE_VERSION_MICRO  0
 
 #define LIBAVRESAMPLE_VERSION_INT  AV_VERSION_INT(LIBAVRESAMPLE_VERSION_MAJOR, \
                                                   LIBAVRESAMPLE_VERSION_MINOR, \

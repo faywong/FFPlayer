@@ -41,7 +41,6 @@ static int get_mode(AVCodecContext *avctx)
 
 typedef struct ILBCDecContext {
     const AVClass *class;
-    AVFrame frame;
     iLBC_Dec_Inst_t decoder;
     int enhance;
 } ILBCDecContext;
@@ -69,8 +68,6 @@ static av_cold int ilbc_decode_init(AVCodecContext *avctx)
     }
 
     WebRtcIlbcfix_InitDecode(&s->decoder, mode, s->enhance);
-    avcodec_get_frame_defaults(&s->frame);
-    avctx->coded_frame = &s->frame;
 
     avctx->channels       = 1;
     avctx->channel_layout = AV_CH_LAYOUT_MONO;
@@ -86,6 +83,7 @@ static int ilbc_decode_frame(AVCodecContext *avctx, void *data,
     const uint8_t *buf = avpkt->data;
     int buf_size       = avpkt->size;
     ILBCDecContext *s  = avctx->priv_data;
+    AVFrame *frame     = data;
     int ret;
 
     if (s->decoder.no_of_bytes > buf_size) {
@@ -94,17 +92,14 @@ static int ilbc_decode_frame(AVCodecContext *avctx, void *data,
         return AVERROR_INVALIDDATA;
     }
 
-    s->frame.nb_samples = s->decoder.blockl;
-    if ((ret = ff_get_buffer(avctx, &s->frame)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+    frame->nb_samples = s->decoder.blockl;
+    if ((ret = ff_get_buffer(avctx, frame, 0)) < 0)
         return ret;
-    }
 
-    WebRtcIlbcfix_DecodeImpl((WebRtc_Word16*) s->frame.data[0],
+    WebRtcIlbcfix_DecodeImpl((WebRtc_Word16*) frame->data[0],
                              (const WebRtc_UWord16*) buf, &s->decoder, 1);
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = s->frame;
+    *got_frame_ptr = 1;
 
     return s->decoder.no_of_bytes;
 }
@@ -162,20 +157,7 @@ static av_cold int ilbc_encode_init(AVCodecContext *avctx)
 
     avctx->block_align = s->encoder.no_of_bytes;
     avctx->frame_size  = s->encoder.blockl;
-#if FF_API_OLD_ENCODE_AUDIO
-    avctx->coded_frame = avcodec_alloc_frame();
-    if (!avctx->coded_frame)
-        return AVERROR(ENOMEM);
-#endif
 
-    return 0;
-}
-
-static av_cold int ilbc_encode_close(AVCodecContext *avctx)
-{
-#if FF_API_OLD_ENCODE_AUDIO
-    av_freep(&avctx->coded_frame);
-#endif
     return 0;
 }
 
@@ -185,10 +167,8 @@ static int ilbc_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     ILBCEncContext *s = avctx->priv_data;
     int ret;
 
-    if ((ret = ff_alloc_packet(avpkt, 50))) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, 50)) < 0)
         return ret;
-    }
 
     WebRtcIlbcfix_EncodeImpl((WebRtc_UWord16*) avpkt->data, (const WebRtc_Word16*) frame->data[0], &s->encoder);
 
@@ -209,7 +189,6 @@ AVCodec ff_libilbc_encoder = {
     .priv_data_size = sizeof(ILBCEncContext),
     .init           = ilbc_encode_init,
     .encode2        = ilbc_encode_frame,
-    .close          = ilbc_encode_close,
     .sample_fmts    = (const enum AVSampleFormat[]){ AV_SAMPLE_FMT_S16,
                                                      AV_SAMPLE_FMT_NONE },
     .long_name      = NULL_IF_CONFIG_SMALL("iLBC (Internet Low Bitrate Codec)"),

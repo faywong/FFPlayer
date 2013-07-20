@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "dsputil_mmx.h"
+#include "dsputil_x86.h"
 #include "diracdsp_mmx.h"
 
 void ff_put_rect_clamped_mmx(uint8_t *dst, int dst_stride, const int16_t *src, int src_stride, int width, int height);
@@ -59,6 +59,9 @@ HPEL_FILTER(16, sse2)
 void ff_diracdsp_init_mmx(DiracDSPContext* c)
 {
     int mm_flags = av_get_cpu_flags();
+
+    if (!(mm_flags & AV_CPU_FLAG_MMX))
+        return;
 
 #if HAVE_YASM
     c->add_dirac_obmc[0] = ff_add_dirac_obmc8_mmx;

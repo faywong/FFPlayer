@@ -23,43 +23,63 @@
  * swap UV filter
  */
 
+#include "libavutil/pixdesc.h"
 #include "avfilter.h"
 #include "formats.h"
 #include "internal.h"
 #include "video.h"
 
-static AVFilterBufferRef *get_video_buffer(AVFilterLink *link, int perms,
-                                           int w, int h)
+static void do_swap(AVFrame *frame)
 {
-    AVFilterBufferRef *picref =
-        ff_default_get_video_buffer(link, perms, w, h);
+    FFSWAP(uint8_t*,     frame->data[1],     frame->data[2]);
+    FFSWAP(int,          frame->linesize[1], frame->linesize[2]);
+    FFSWAP(uint64_t,     frame->error[1],    frame->error[2]);
+    FFSWAP(AVBufferRef*, frame->buf[1],      frame->buf[2]);
+}
 
-    FFSWAP(uint8_t*, picref->data[1], picref->data[2]);
-    FFSWAP(int, picref->linesize[1], picref->linesize[2]);
-
+static AVFrame *get_video_buffer(AVFilterLink *link, int w, int h)
+{
+    AVFrame *picref = ff_default_get_video_buffer(link, w, h);
+    do_swap(picref);
     return picref;
 }
 
-static int filter_frame(AVFilterLink *link, AVFilterBufferRef *inpicref)
+static int filter_frame(AVFilterLink *link, AVFrame *inpicref)
 {
-    FFSWAP(uint8_t*, inpicref->data[1], inpicref->data[2]);
-    FFSWAP(int, inpicref->linesize[1], inpicref->linesize[2]);
-
+    do_swap(inpicref);
     return ff_filter_frame(link->dst->outputs[0], inpicref);
+}
+
+static int is_planar_yuv(const AVPixFmtDescriptor *desc)
+{
+    int i;
+
+    if (desc->flags & ~(AV_PIX_FMT_FLAG_BE | AV_PIX_FMT_FLAG_PLANAR | AV_PIX_FMT_FLAG_ALPHA) ||
+        desc->nb_components < 3 ||
+        (desc->comp[1].depth_minus1 != desc->comp[2].depth_minus1))
+        return 0;
+    for (i = 0; i < desc->nb_components; i++) {
+        if (desc->comp[i].offset_plus1 != 1 ||
+            desc->comp[i].shift != 0 ||
+            desc->comp[i].plane != i)
+            return 0;
+    }
+
+    return 1;
 }
 
 static int query_formats(AVFilterContext *ctx)
 {
-    static const enum AVPixelFormat pix_fmts[] = {
-        AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUVJ420P, AV_PIX_FMT_YUVA420P,
-        AV_PIX_FMT_YUV444P, AV_PIX_FMT_YUVJ444P, AV_PIX_FMT_YUVA444P,
-        AV_PIX_FMT_YUV440P, AV_PIX_FMT_YUVJ440P,
-        AV_PIX_FMT_YUV422P, AV_PIX_FMT_YUVJ422P,
-        AV_PIX_FMT_YUV411P,
-        AV_PIX_FMT_NONE,
-    };
+    AVFilterFormats *formats = NULL;
+    int fmt;
 
-    ff_set_common_formats(ctx, ff_make_format_list(pix_fmts));
+    for (fmt = 0; fmt < AV_PIX_FMT_NB; fmt++) {
+        const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(fmt);
+        if (is_planar_yuv(desc))
+            ff_add_format(&formats, fmt);
+    }
+
+    ff_set_common_formats(ctx, formats);
     return 0;
 }
 

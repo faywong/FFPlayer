@@ -67,6 +67,8 @@ static av_cold int twolame_encode_init(AVCodecContext *avctx)
     twolame_set_psymodel(s->glopts, s->psymodel);
     twolame_set_energy_levels(s->glopts, s->energy);
     twolame_set_error_protection(s->glopts, s->error_protection);
+    twolame_set_copyright(s->glopts, s->copyright);
+    twolame_set_original(s->glopts, s->original);
 
     twolame_set_num_channels(s->glopts, avctx->channels);
     twolame_set_in_samplerate(s->glopts, avctx->sample_rate);
@@ -94,7 +96,7 @@ static int twolame_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     TWOLAMEContext *s = avctx->priv_data;
     int ret;
 
-    if ((ret = ff_alloc_packet2(avctx, avpkt, MPA_MAX_CODED_FRAME_SIZE)))
+    if ((ret = ff_alloc_packet2(avctx, avpkt, MPA_MAX_CODED_FRAME_SIZE)) < 0)
         return ret;
 
     if (frame) {

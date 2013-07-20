@@ -37,10 +37,10 @@
 #include "libavcodec/avcodec.h"
 
 #include "libavfilter/avfilter.h"
-#include "libavfilter/avfiltergraph.h"
 
 #include "libavutil/avutil.h"
 #include "libavutil/dict.h"
+#include "libavutil/eval.h"
 #include "libavutil/fifo.h"
 #include "libavutil/pixfmt.h"
 #include "libavutil/rational.h"
@@ -113,6 +113,7 @@ typedef struct OptionsContext {
     int chapters_input_file;
 
     int64_t recording_time;
+    int64_t stop_time;
     uint64_t limit_filesize;
     float mux_preload;
     float mux_max_delay;
@@ -163,14 +164,22 @@ typedef struct OptionsContext {
     int        nb_copy_prior_start;
     SpecifierOpt *filters;
     int        nb_filters;
+    SpecifierOpt *filter_scripts;
+    int        nb_filter_scripts;
     SpecifierOpt *reinit_filters;
     int        nb_reinit_filters;
     SpecifierOpt *fix_sub_duration;
     int        nb_fix_sub_duration;
+    SpecifierOpt *canvas_sizes;
+    int        nb_canvas_sizes;
     SpecifierOpt *pass;
     int        nb_pass;
     SpecifierOpt *passlogfiles;
     int        nb_passlogfiles;
+    SpecifierOpt *guess_layout_max;
+    int        nb_guess_layout_max;
+    SpecifierOpt *apad;
+    int        nb_apad;
 } OptionsContext;
 
 typedef struct InputFilter {
@@ -195,6 +204,7 @@ typedef struct FilterGraph {
     const char    *graph_desc;
 
     AVFilterGraph *graph;
+    int reconfiguration;
 
     InputFilter   **inputs;
     int          nb_inputs;
@@ -209,6 +219,7 @@ typedef struct InputStream {
     int decoding_needed;     /* true if the packets must be decoded in 'raw_fifo' */
     AVCodec *dec;
     AVFrame *decoded_frame;
+    AVFrame *filter_frame; /* a ref of decoded_frame, to be sent to filters */
 
     int64_t       start;     /* time when read started */
     /* predicted dts of the next packet read for this stream or (when there are
@@ -229,6 +240,7 @@ typedef struct InputStream {
     AVDictionary *opts;
     AVRational framerate;               /* framerate forced with -r */
     int top_field_first;
+    int guess_layout_max;
 
     int resample_height;
     int resample_width;
@@ -249,12 +261,10 @@ typedef struct InputStream {
     struct sub2video {
         int64_t last_pts;
         int64_t end_pts;
-        AVFilterBufferRef *ref;
+        AVFrame *frame;
         int w, h;
     } sub2video;
 
-    /* a pool of free buffers for decoded data */
-    FrameBuffer *buffer_pool;
     int dr1;
 
     /* decoded data from this stream goes into all those filters
@@ -271,6 +281,7 @@ typedef struct InputFile {
     int eagain;           /* true if last read attempt returned EAGAIN */
     int ist_index;        /* index of first stream in input_streams */
     int64_t ts_offset;
+    int64_t last_ts;
     int nb_streams;       /* number of stream that ffmpeg is aware of; may be different
                              from ctx.nb_streams if new streams appear during av_read_frame() */
     int nb_streams_warn;  /* number of streams that the user was warned of */
@@ -286,6 +297,17 @@ typedef struct InputFile {
 #endif
 } InputFile;
 
+enum forced_keyframes_const {
+    FKF_N,
+    FKF_N_FORCED,
+    FKF_PREV_FORCED_N,
+    FKF_PREV_FORCED_T,
+    FKF_T,
+    FKF_NB
+};
+
+extern const char *const forced_keyframes_const_names[];
+
 typedef struct OutputStream {
     int file_index;          /* file index */
     int index;               /* stream index in the output file */
@@ -300,6 +322,8 @@ typedef struct OutputStream {
     /* pts of the first frame encoded for this stream, used for limiting
      * recording time */
     int64_t first_pts;
+    /* dts of the last packet sent to the muxer */
+    int64_t last_mux_dts;
     AVBitStreamFilterContext *bitstream_filters;
     AVCodec *enc;
     int64_t max_frames;
@@ -310,13 +334,15 @@ typedef struct OutputStream {
     int force_fps;
     int top_field_first;
 
-    float frame_aspect_ratio;
+    AVRational frame_aspect_ratio;
 
     /* forced key frames */
     int64_t *forced_kf_pts;
     int forced_kf_count;
     int forced_kf_index;
     char *forced_keyframes;
+    AVExpr *forced_keyframes_pexpr;
+    double forced_keyframes_expr_const_values[FKF_NB];
 
     /* audio only */
     int audio_channels_map[SWR_CH_MAX];  /* list of the channels id to pick from the source stream */
@@ -329,10 +355,10 @@ typedef struct OutputStream {
     char *avfilter;
 
     int64_t sws_flags;
-    int64_t swr_filter_type;
-    int64_t swr_dither_method;
-    double swr_dither_scale;
     AVDictionary *opts;
+    AVDictionary *swr_opts;
+    AVDictionary *resample_opts;
+    char *apad;
     int finished;        /* no more packets should be written for this stream */
     int unavailable;                     /* true if the steram is unavailable (possibly temporarily) */
     int stream_copy;

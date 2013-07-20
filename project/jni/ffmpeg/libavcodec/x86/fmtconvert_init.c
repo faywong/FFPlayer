@@ -3,6 +3,8 @@
  * Copyright (c) 2000, 2001 Fabrice Bellard
  * Copyright (c) 2002-2004 Michael Niedermayer <michaelni@gmx.at>
  *
+ * MMX optimization by Nick Kurshev <nickols_k@mail.ru>
+ *
  * This file is part of FFmpeg.
  *
  * FFmpeg is free software; you can redistribute it and/or
@@ -18,20 +20,18 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- *
- * MMX optimization by Nick Kurshev <nickols_k@mail.ru>
  */
 
+#include "libavutil/attributes.h"
 #include "libavutil/cpu.h"
 #include "libavutil/x86/asm.h"
 #include "libavutil/x86/cpu.h"
 #include "libavcodec/fmtconvert.h"
-#include "libavcodec/dsputil.h"
 
 #if HAVE_YASM
 
-void ff_int32_to_float_fmul_scalar_sse (float *dst, const int *src, float mul, int len);
-void ff_int32_to_float_fmul_scalar_sse2(float *dst, const int *src, float mul, int len);
+void ff_int32_to_float_fmul_scalar_sse (float *dst, const int32_t *src, float mul, int len);
+void ff_int32_to_float_fmul_scalar_sse2(float *dst, const int32_t *src, float mul, int len);
 
 void ff_float_to_int16_3dnow(int16_t *dst, const float *src, long len);
 void ff_float_to_int16_sse  (int16_t *dst, const float *src, long len);
@@ -113,7 +113,7 @@ static void float_interleave_sse(float *dst, const float **src,
 }
 #endif /* HAVE_YASM */
 
-void ff_fmt_convert_init_x86(FmtConvertContext *c, AVCodecContext *avctx)
+av_cold void ff_fmt_convert_init_x86(FmtConvertContext *c, AVCodecContext *avctx)
 {
 #if HAVE_YASM
     int mm_flags = av_get_cpu_flags();

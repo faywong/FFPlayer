@@ -35,6 +35,7 @@ const CodecTags ff_mkv_codec_tags[]={
     {"A_MPEG/L2"        , AV_CODEC_ID_MP2},
     {"A_MPEG/L1"        , AV_CODEC_ID_MP2},
     {"A_MPEG/L3"        , AV_CODEC_ID_MP3},
+    {"A_OPUS/EXPERIMENTAL",AV_CODEC_ID_OPUS},
     {"A_OPUS",            AV_CODEC_ID_OPUS},
     {"A_PCM/FLOAT/IEEE" , AV_CODEC_ID_PCM_F32LE},
     {"A_PCM/FLOAT/IEEE" , AV_CODEC_ID_PCM_F64LE},
@@ -60,11 +61,18 @@ const CodecTags ff_mkv_codec_tags[]={
     {"S_TEXT/UTF8"      , AV_CODEC_ID_TEXT},
     {"S_TEXT/UTF8"      , AV_CODEC_ID_SRT},
     {"S_TEXT/ASCII"     , AV_CODEC_ID_TEXT},
+#if FF_API_ASS_SSA
     {"S_TEXT/ASS"       , AV_CODEC_ID_SSA},
     {"S_TEXT/SSA"       , AV_CODEC_ID_SSA},
     {"S_ASS"            , AV_CODEC_ID_SSA},
     {"S_SSA"            , AV_CODEC_ID_SSA},
+#endif
+    {"S_TEXT/ASS"       , AV_CODEC_ID_ASS},
+    {"S_TEXT/SSA"       , AV_CODEC_ID_ASS},
+    {"S_ASS"            , AV_CODEC_ID_ASS},
+    {"S_SSA"            , AV_CODEC_ID_ASS},
     {"S_VOBSUB"         , AV_CODEC_ID_DVD_SUBTITLE},
+    {"S_DVBSUB"         , AV_CODEC_ID_DVB_SUBTITLE},
     {"S_HDMV/PGS"       , AV_CODEC_ID_HDMV_PGS_SUBTITLE},
 
     {"V_DIRAC"          , AV_CODEC_ID_DIRAC},
@@ -85,6 +93,7 @@ const CodecTags ff_mkv_codec_tags[]={
     {"V_THEORA"         , AV_CODEC_ID_THEORA},
     {"V_UNCOMPRESSED"   , AV_CODEC_ID_RAWVIDEO},
     {"V_VP8"            , AV_CODEC_ID_VP8},
+    {"V_VP9"            , AV_CODEC_ID_VP9},
 
     {""                 , AV_CODEC_ID_NONE}
 };
@@ -114,7 +123,7 @@ const char * const ff_matroska_video_stereo_mode[MATROSKA_VIDEO_STEREO_MODE_COUN
     "bottom_top",
     "top_bottom",
     "checkerboard_rl",
-    "checkerboard_lr"
+    "checkerboard_lr",
     "row_interleaved_rl",
     "row_interleaved_lr",
     "col_interleaved_rl",

@@ -21,13 +21,13 @@
 
 #include <stdint.h>
 #include "libavutil/common.h"
+#include "libavutil/internal.h"
 #include "libavutil/mathematics.h"
 #include "avcodec.h"
 #include "get_bits.h"
 #include "aacps.h"
 #include "aacps_tablegen.h"
 #include "aacpsdata.c"
-#include "dsputil.h"
 
 #define PS_BASELINE 0  ///< Operate in Baseline PS mode
                        ///< Baseline implies 10 or 20 stereo bands,
@@ -823,7 +823,8 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
             h12 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][1];
             h21 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][2];
             h22 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][3];
-            if (!PS_BASELINE && ps->enable_ipdopd && b < ps->nr_ipdopd_par) {
+
+            if (!PS_BASELINE && ps->enable_ipdopd && 2*b <= NR_PAR_BANDS[is34]) {
                 //The spec say says to only run this smoother when enable_ipdopd
                 //is set but the reference decoder appears to run it constantly
                 float h11i, h12i, h21i, h22i;

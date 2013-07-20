@@ -24,12 +24,14 @@
 
 #include <stdlib.h>
 #include "libavutil/avstring.h"
+#include "libavutil/base64.h"
 #include "libavutil/bswap.h"
 #include "libavutil/dict.h"
 #include "libavcodec/get_bits.h"
 #include "libavcodec/bytestream.h"
 #include "libavcodec/vorbis_parser.h"
 #include "avformat.h"
+#include "flacdec.h"
 #include "internal.h"
 #include "oggdec.h"
 #include "vorbiscomment.h"
@@ -122,13 +124,28 @@ ff_vorbis_comment(AVFormatContext * as, AVDictionary **m, const uint8_t *buf, in
             }
 
             for (j = 0; j < tl; j++)
-                tt[j] = toupper(t[j]);
+                tt[j] = av_toupper(t[j]);
             tt[tl] = 0;
 
             memcpy(ct, v, vl);
             ct[vl] = 0;
 
-            if (!ogm_chapter(as, tt, ct))
+            if (!strcmp(tt, "METADATA_BLOCK_PICTURE")) {
+                int ret;
+                char *pict = av_malloc(vl);
+
+                if (!pict) {
+                    av_log(as, AV_LOG_WARNING, "out-of-memory error. Skipping cover art block.\n");
+                    continue;
+                }
+                if ((ret = av_base64_decode(pict, ct, vl)) > 0)
+                    ret = ff_flac_parse_picture(as, pict, ret);
+                av_freep(&pict);
+                if (ret < 0) {
+                    av_log(as, AV_LOG_WARNING, "Failed to parse cover art block.\n");
+                    continue;
+                }
+            } else if (!ogm_chapter(as, tt, ct))
                 av_dict_set(m, tt, ct,
                                    AV_DICT_DONT_STRDUP_KEY |
                                    AV_DICT_DONT_STRDUP_VAL);
@@ -173,11 +190,15 @@ static unsigned int
 fixup_vorbis_headers(AVFormatContext * as, struct oggvorbis_private *priv,
                      uint8_t **buf)
 {
-    int i,offset, len;
+    int i,offset, len, buf_len;
     unsigned char *ptr;
 
     len = priv->len[0] + priv->len[1] + priv->len[2];
-    ptr = *buf = av_mallocz(len + len/255 + 64);
+    buf_len = len + len/255 + 64;
+    ptr = *buf = av_realloc(NULL, buf_len);
+    if (!*buf)
+        return 0;
+    memset(*buf, '\0', buf_len);
 
     ptr[0] = 2;
     offset = 1;

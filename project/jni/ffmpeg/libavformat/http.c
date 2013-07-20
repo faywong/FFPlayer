@@ -49,6 +49,8 @@ typedef struct {
     char *content_type;
     char *user_agent;
     int64_t off, filesize;
+    int icy_data_read;      ///< how much data was read since last ICY metadata packet
+    int icy_metaint;        ///< after how many bytes of read data a new metadata packet will be found
     char location[MAX_URL_SIZE];
     HTTPAuthState auth_state;
     HTTPAuthState proxy_auth_state;
@@ -64,22 +66,30 @@ typedef struct {
     int is_akamai;
     int rw_timeout;
     char *mime_type;
+    char *cookies;          ///< holds newline (\n) delimited Set-Cookie header field values (without the "Set-Cookie: " field name)
+    int icy;
+    char *icy_metadata_headers;
+    char *icy_metadata_packet;
 } HTTPContext;
 
 #define OFFSET(x) offsetof(HTTPContext, x)
 #define D AV_OPT_FLAG_DECODING_PARAM
 #define E AV_OPT_FLAG_ENCODING_PARAM
-#define DEC AV_OPT_FLAG_DECODING_PARAM
+#define DEFAULT_USER_AGENT "Lavf/" AV_STRINGIFY(LIBAVFORMAT_VERSION)
 static const AVOption options[] = {
-{"seekable", "Control seekability of connection", OFFSET(seekable), AV_OPT_TYPE_INT, {.i64 = -1}, -1, 1, D },
+{"seekable", "control seekability of connection", OFFSET(seekable), AV_OPT_TYPE_INT, {.i64 = -1}, -1, 1, D },
 {"chunked_post", "use chunked transfer-encoding for posts", OFFSET(chunked_post), AV_OPT_TYPE_INT, {.i64 = 1}, 0, 1, E },
-{"headers", "custom HTTP headers, can override built in default headers", OFFSET(headers), AV_OPT_TYPE_STRING, { 0 }, 0, 0, D|E },
+{"headers", "set custom HTTP headers, can override built in default headers", OFFSET(headers), AV_OPT_TYPE_STRING, { 0 }, 0, 0, D|E },
 {"content_type", "force a content type", OFFSET(content_type), AV_OPT_TYPE_STRING, { 0 }, 0, 0, D|E },
-{"user-agent", "override User-Agent header", OFFSET(user_agent), AV_OPT_TYPE_STRING, {.str = NULL}, 0, 0, DEC},
+{"user-agent", "override User-Agent header", OFFSET(user_agent), AV_OPT_TYPE_STRING, {.str = DEFAULT_USER_AGENT}, 0, 0, D },
 {"multiple_requests", "use persistent connections", OFFSET(multiple_requests), AV_OPT_TYPE_INT, {.i64 = 0}, 0, 1, D|E },
-{"post_data", "custom HTTP post data", OFFSET(post_data), AV_OPT_TYPE_BINARY, .flags = D|E },
-{"timeout", "timeout of socket i/o operations", OFFSET(rw_timeout), AV_OPT_TYPE_INT, {.i64 = -1}, -1, INT_MAX, D|E },
-{"mime_type", "", OFFSET(mime_type), AV_OPT_TYPE_STRING, {0}, 0, 0, 0 },
+{"post_data", "set custom HTTP post data", OFFSET(post_data), AV_OPT_TYPE_BINARY, .flags = D|E },
+{"timeout", "set timeout of socket I/O operations", OFFSET(rw_timeout), AV_OPT_TYPE_INT, {.i64 = -1}, -1, INT_MAX, D|E },
+{"mime_type", "set MIME type", OFFSET(mime_type), AV_OPT_TYPE_STRING, {0}, 0, 0, 0 },
+{"cookies", "set cookies to be sent in applicable future requests, use newline delimited Set-Cookie HTTP field value syntax", OFFSET(cookies), AV_OPT_TYPE_STRING, {0}, 0, 0, 0 },
+{"icy", "request ICY metadata", OFFSET(icy), AV_OPT_TYPE_INT, {.i64 = 0}, 0, 1, D },
+{"icy_metadata_headers", "return ICY metadata headers", OFFSET(icy_metadata_headers), AV_OPT_TYPE_STRING, {0}, 0, 0, 0 },
+{"icy_metadata_packet", "return current ICY metadata packet", OFFSET(icy_metadata_packet), AV_OPT_TYPE_STRING, {0}, 0, 0, 0 },
 {NULL}
 };
 #define HTTP_CLASS(flavor)\
@@ -118,10 +128,6 @@ static int http_open_cnx(URLContext *h)
     HTTPAuthType cur_auth_type, cur_proxy_auth_type;
     HTTPContext *s = h->priv_data;
 
-    proxy_path = getenv("http_proxy");
-    use_proxy = (proxy_path != NULL) && !getenv("no_proxy") &&
-        av_strstart(proxy_path, "http://", NULL);
-
     /* fill the dest addr */
  redo:
     /* needed in any case to build the host string */
@@ -129,6 +135,10 @@ static int http_open_cnx(URLContext *h)
                  hostname, sizeof(hostname), &port,
                  path1, sizeof(path1), s->location);
     ff_url_join(hoststr, sizeof(hoststr), NULL, NULL, hostname, port, NULL);
+
+    proxy_path = getenv("http_proxy");
+    use_proxy = !ff_http_match_no_proxy(getenv("no_proxy"), hostname) &&
+                proxy_path != NULL && av_strstart(proxy_path, "http://", NULL);
 
     if (!strcmp(proto, "https")) {
         lower_proto = "tls";
@@ -216,6 +226,7 @@ int ff_http_do_new_request(URLContext *h, const char *uri)
     HTTPContext *s = h->priv_data;
 
     s->off = 0;
+    s->icy_data_read = 0;
     av_strlcpy(s->location, uri, sizeof(s->location));
 
     return http_open_cnx(h);
@@ -287,6 +298,7 @@ static int process_line(URLContext *h, char *line, int line_count,
 {
     HTTPContext *s = h->priv_data;
     char *tag, *p, *end;
+    char redirected_location[MAX_URL_SIZE];
 
     /* end of header */
     if (line[0] == '\0') {
@@ -296,9 +308,9 @@ static int process_line(URLContext *h, char *line, int line_count,
 
     p = line;
     if (line_count == 0) {
-        while (!isspace(*p) && *p != '\0')
+        while (!av_isspace(*p) && *p != '\0')
             p++;
-        while (isspace(*p))
+        while (av_isspace(*p))
             p++;
         s->http_code = strtol(p, &end, 10);
 
@@ -323,10 +335,11 @@ static int process_line(URLContext *h, char *line, int line_count,
         *p = '\0';
         tag = line;
         p++;
-        while (isspace(*p))
+        while (av_isspace(*p))
             p++;
         if (!av_strcasecmp(tag, "Location")) {
-            av_strlcpy(s->location, p, sizeof(s->location));
+            ff_make_absolute_url(redirected_location, sizeof(redirected_location), s->location, p);
+            av_strlcpy(s->location, redirected_location, sizeof(s->location));
             *new_location = 1;
         } else if (!av_strcasecmp (tag, "Content-Length") && s->filesize == -1) {
             s->filesize = strtoll(p, NULL, 10);
@@ -359,9 +372,130 @@ static int process_line(URLContext *h, char *line, int line_count,
             s->is_akamai = 1;
         } else if (!av_strcasecmp (tag, "Content-Type")) {
             av_free(s->mime_type); s->mime_type = av_strdup(p);
+        } else if (!av_strcasecmp (tag, "Set-Cookie")) {
+            if (!s->cookies) {
+                if (!(s->cookies = av_strdup(p)))
+                    return AVERROR(ENOMEM);
+            } else {
+                char *tmp = s->cookies;
+                size_t str_size = strlen(tmp) + strlen(p) + 2;
+                if (!(s->cookies = av_malloc(str_size))) {
+                    s->cookies = tmp;
+                    return AVERROR(ENOMEM);
+                }
+                snprintf(s->cookies, str_size, "%s\n%s", tmp, p);
+                av_free(tmp);
+            }
+        } else if (!av_strcasecmp (tag, "Icy-MetaInt")) {
+            s->icy_metaint = strtoll(p, NULL, 10);
+        } else if (!av_strncasecmp(tag, "Icy-", 4)) {
+            // Concat all Icy- header lines
+            char *buf = av_asprintf("%s%s: %s\n",
+                s->icy_metadata_headers ? s->icy_metadata_headers : "", tag, p);
+            if (!buf)
+                return AVERROR(ENOMEM);
+            av_freep(&s->icy_metadata_headers);
+            s->icy_metadata_headers = buf;
         }
     }
     return 1;
+}
+
+/**
+ * Create a string containing cookie values for use as a HTTP cookie header
+ * field value for a particular path and domain from the cookie values stored in
+ * the HTTP protocol context. The cookie string is stored in *cookies.
+ *
+ * @return a negative value if an error condition occurred, 0 otherwise
+ */
+static int get_cookies(HTTPContext *s, char **cookies, const char *path,
+                       const char *domain)
+{
+    // cookie strings will look like Set-Cookie header field values.  Multiple
+    // Set-Cookie fields will result in multiple values delimited by a newline
+    int ret = 0;
+    char *next, *cookie, *set_cookies = av_strdup(s->cookies), *cset_cookies = set_cookies;
+
+    if (!set_cookies) return AVERROR(EINVAL);
+
+    *cookies = NULL;
+    while ((cookie = av_strtok(set_cookies, "\n", &next))) {
+        int domain_offset = 0;
+        char *param, *next_param, *cdomain = NULL, *cpath = NULL, *cvalue = NULL;
+        set_cookies = NULL;
+
+        while ((param = av_strtok(cookie, "; ", &next_param))) {
+            cookie = NULL;
+            if        (!av_strncasecmp("path=",   param, 5)) {
+                av_free(cpath);
+                cpath = av_strdup(&param[5]);
+            } else if (!av_strncasecmp("domain=", param, 7)) {
+                av_free(cdomain);
+                cdomain = av_strdup(&param[7]);
+            } else if (!av_strncasecmp("secure",  param, 6) ||
+                       !av_strncasecmp("comment", param, 7) ||
+                       !av_strncasecmp("max-age", param, 7) ||
+                       !av_strncasecmp("version", param, 7)) {
+                // ignore Comment, Max-Age, Secure and Version
+            } else {
+                av_free(cvalue);
+                cvalue = av_strdup(param);
+            }
+        }
+        if (!cdomain)
+            cdomain = av_strdup(domain);
+
+        // ensure all of the necessary values are valid
+        if (!cdomain || !cpath || !cvalue) {
+            av_log(s, AV_LOG_WARNING,
+                   "Invalid cookie found, no value, path or domain specified\n");
+            goto done_cookie;
+        }
+
+        // check if the request path matches the cookie path
+        if (av_strncasecmp(path, cpath, strlen(cpath)))
+            goto done_cookie;
+
+        // the domain should be at least the size of our cookie domain
+        domain_offset = strlen(domain) - strlen(cdomain);
+        if (domain_offset < 0)
+            goto done_cookie;
+
+        // match the cookie domain
+        if (av_strcasecmp(&domain[domain_offset], cdomain))
+            goto done_cookie;
+
+        // cookie parameters match, so copy the value
+        if (!*cookies) {
+            if (!(*cookies = av_strdup(cvalue))) {
+                ret = AVERROR(ENOMEM);
+                goto done_cookie;
+            }
+        } else {
+            char *tmp = *cookies;
+            size_t str_size = strlen(cvalue) + strlen(*cookies) + 3;
+            if (!(*cookies = av_malloc(str_size))) {
+                ret = AVERROR(ENOMEM);
+                goto done_cookie;
+            }
+            snprintf(*cookies, str_size, "%s; %s", tmp, cvalue);
+            av_free(tmp);
+        }
+
+        done_cookie:
+        av_free(cdomain);
+        av_free(cpath);
+        av_free(cvalue);
+        if (ret < 0) {
+            if (*cookies) av_freep(cookies);
+            av_free(cset_cookies);
+            return ret;
+        }
+    }
+
+    av_free(cset_cookies);
+
+    return 0;
 }
 
 static inline int has_header(const char *str, const char *header)
@@ -429,8 +563,7 @@ static int http_connect(URLContext *h, const char *path, const char *local_path,
     /* set default headers if needed */
     if (!has_header(s->headers, "\r\nUser-Agent: "))
         len += av_strlcatf(headers + len, sizeof(headers) - len,
-                           "User-Agent: %s\r\n",
-                           s->user_agent ? s->user_agent : LIBAVFORMAT_IDENT);
+                           "User-Agent: %s\r\n", s->user_agent);
     if (!has_header(s->headers, "\r\nAccept: "))
         len += av_strlcpy(headers + len, "Accept: */*\r\n",
                           sizeof(headers) - len);
@@ -460,6 +593,18 @@ static int http_connect(URLContext *h, const char *path, const char *local_path,
     if (!has_header(s->headers, "\r\nContent-Type: ") && s->content_type)
         len += av_strlcatf(headers + len, sizeof(headers) - len,
                            "Content-Type: %s\r\n", s->content_type);
+    if (!has_header(s->headers, "\r\nCookie: ") && s->cookies) {
+        char *cookies = NULL;
+        if (!get_cookies(s, &cookies, path, hoststr)) {
+            len += av_strlcatf(headers + len, sizeof(headers) - len,
+                               "Cookie: %s\r\n", cookies);
+            av_free(cookies);
+        }
+    }
+    if (!has_header(s->headers, "\r\nIcy-MetaData: ") && s->icy) {
+        len += av_strlcatf(headers + len, sizeof(headers) - len,
+                           "Icy-MetaData: %d\r\n", 1);
+    }
 
     /* now add in custom headers */
     if (s->headers)
@@ -493,6 +638,7 @@ static int http_connect(URLContext *h, const char *path, const char *local_path,
     s->buf_end = s->buffer;
     s->line_count = 0;
     s->off = 0;
+    s->icy_data_read = 0;
     s->filesize = -1;
     s->willclose = 0;
     s->end_chunked_post = 0;
@@ -532,6 +678,7 @@ static int http_buf_read(URLContext *h, uint8_t *buf, int size)
     }
     if (len > 0) {
         s->off += len;
+        s->icy_data_read += len;
         if (s->chunksize > 0)
             s->chunksize -= len;
     }
@@ -572,6 +719,32 @@ static int http_read(URLContext *h, uint8_t *buf, int size)
             }
         }
         size = FFMIN(size, s->chunksize);
+    }
+    if (s->icy_metaint > 0) {
+        int remaining = s->icy_metaint - s->icy_data_read; /* until next metadata packet */
+        if (!remaining) {
+            // The metadata packet is variable sized. It has a 1 byte header
+            // which sets the length of the packet (divided by 16). If it's 0,
+            // the metadata doesn't change. After the packet, icy_metaint bytes
+            // of normal data follow.
+            int ch = http_getc(s);
+            if (ch < 0)
+                return ch;
+            if (ch > 0) {
+                char data[255 * 16 + 1];
+                int n;
+                int ret;
+                ch *= 16;
+                for (n = 0; n < ch; n++)
+                    data[n] = http_getc(s);
+                data[ch + 1] = 0;
+                if ((ret = av_opt_set(s, "icy_metadata_packet", data, 0)) < 0)
+                    return ret;
+            }
+            s->icy_data_read = 0;
+            remaining = s->icy_metaint;
+        }
+        size = FFMIN(size, remaining);
     }
     return http_buf_read(h, buf, size);
 }

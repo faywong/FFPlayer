@@ -50,6 +50,7 @@
 #ifndef AVCODEC_AC3DEC_H
 #define AVCODEC_AC3DEC_H
 
+#include "libavutil/float_dsp.h"
 #include "libavutil/lfg.h"
 #include "ac3.h"
 #include "ac3dsp.h"
@@ -68,7 +69,6 @@
 typedef struct AC3DecodeContext {
     AVClass        *class;                  ///< class for AVOptions
     AVCodecContext *avctx;                  ///< parent context
-    AVFrame frame;                          ///< AVFrame for decoded output
     GetBitContext gbc;                      ///< bitstream reader
 
 ///@name Bit stream information
@@ -199,6 +199,7 @@ typedef struct AC3DecodeContext {
 
 ///@name Optimization
     DSPContext dsp;                         ///< for optimization
+    AVFloatDSPContext fdsp;
     AC3DSPContext ac3dsp;
     FmtConvertContext fmt_conv;             ///< optimized conversion functions
 ///@}
@@ -208,7 +209,7 @@ typedef struct AC3DecodeContext {
     float *dlyptr[AC3_MAX_CHANNELS];
 
 ///@name Aligned arrays
-    DECLARE_ALIGNED(16, int,   fixed_coeffs)[AC3_MAX_CHANNELS][AC3_MAX_COEFS];       ///< fixed-point transform coefficients
+    DECLARE_ALIGNED(16, int32_t, fixed_coeffs)[AC3_MAX_CHANNELS][AC3_MAX_COEFS];     ///< fixed-point transform coefficients
     DECLARE_ALIGNED(32, float, transform_coeffs)[AC3_MAX_CHANNELS][AC3_MAX_COEFS];   ///< transform coefficients
     DECLARE_ALIGNED(32, float, delay)[AC3_MAX_CHANNELS][AC3_BLOCK_SIZE];             ///< delay - added to the next block
     DECLARE_ALIGNED(32, float, window)[AC3_BLOCK_SIZE];                              ///< window coefficients

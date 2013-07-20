@@ -704,7 +704,7 @@ function build()
 #            cd $T
 #    }
 
-cd $T/project && env PATH=$NDKBUILDPATH BUILD_NUM_CPUS=$NCPU nice -n19 ndk-build -j$NCPU && \
+cd $T/project && env PATH=$NDKBUILDPATH BUILD_NUM_CPUS=$NCPU nice -n19 ndk-build -j$NCPU V=1&& \
 	{	grep "CustomBuildScript=y" $T/project/AndroidAppSettings.cfg > /dev/null && \
 		echo Stripping libapplication.so by hand && \
 		rm obj/local/armeabi/libapplication.so && \

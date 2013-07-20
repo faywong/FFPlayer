@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/attributes.h"
 #include "avcodec.h"
 #include "sinewin.h"
 #include "wma.h"
@@ -30,9 +31,9 @@
 
 /* XXX: use same run/length optimization as mpeg decoders */
 //FIXME maybe split decode / encode or pass flag
-static void init_coef_vlc(VLC *vlc, uint16_t **prun_table,
-                          float **plevel_table, uint16_t **pint_table,
-                          const CoefVLCTable *vlc_table)
+static av_cold void init_coef_vlc(VLC *vlc, uint16_t **prun_table,
+                                  float **plevel_table, uint16_t **pint_table,
+                                  const CoefVLCTable *vlc_table)
 {
     int n = vlc_table->n;
     const uint8_t  *table_bits   = vlc_table->huffbits;
@@ -68,7 +69,7 @@ static void init_coef_vlc(VLC *vlc, uint16_t **prun_table,
     av_free(level_table);
 }
 
-int ff_wma_init(AVCodecContext *avctx, int flags2)
+av_cold int ff_wma_init(AVCodecContext *avctx, int flags2)
 {
     WMACodecContext *s = avctx->priv_data;
     int i;
@@ -82,7 +83,6 @@ int ff_wma_init(AVCodecContext *avctx, int flags2)
         || avctx->bit_rate    <= 0)
         return -1;
 
-    ff_dsputil_init(&s->dsp, avctx);
     ff_fmt_convert_init(&s->fmt_conv, avctx);
     avpriv_float_dsp_init(&s->fdsp, avctx->flags & CODEC_FLAG_BITEXACT);
 
@@ -135,6 +135,10 @@ int ff_wma_init(AVCodecContext *avctx, int flags2)
 
     bps = (float)avctx->bit_rate / (float)(avctx->channels * avctx->sample_rate);
     s->byte_offset_bits = av_log2((int)(bps * s->frame_len / 8.0 + 0.5)) + 2;
+    if (s->byte_offset_bits + 3 > MIN_CACHE_BITS) {
+        av_log(avctx, AV_LOG_ERROR, "byte_offset_bits %d is too large\n", s->byte_offset_bits);
+        return AVERROR_PATCHWELCOME;
+    }
 
     /* compute high frequency value and choose if noise coding should
        be activated */

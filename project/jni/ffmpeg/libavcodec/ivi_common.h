@@ -197,7 +197,6 @@ typedef struct IVIPicConfig {
 
 typedef struct IVI45DecContext {
     GetBitContext   gb;
-    AVFrame         frame;
     RVMapDesc       rvmap_tabs[9];   ///< local corrected copy of the static rvmap tables
 
     uint32_t        frame_num;
@@ -317,6 +316,6 @@ int  ff_ivi_init_tiles(IVIPlaneDesc *planes, int tile_width, int tile_height);
 
 int ff_ivi_decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
                         AVPacket *avpkt);
-av_cold int ff_ivi_decode_close(AVCodecContext *avctx);
+int ff_ivi_decode_close(AVCodecContext *avctx);
 
 #endif /* AVCODEC_IVI_COMMON_H */

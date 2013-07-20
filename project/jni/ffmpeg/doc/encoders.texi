@@ -412,6 +412,296 @@ Selected by Encoder (default)
 
 @end table
 
+@section libmp3lame
+
+LAME (Lame Ain't an MP3 Encoder) MP3 encoder wrapper.
+
+Requires the presence of the libmp3lame headers and library during
+configuration. You need to explicitly configure the build with
+@code{--enable-libmp3lame}.
+
+@subsection Option Mapping
+
+The following options are supported by the libmp3lame wrapper,
+the LAME-equivalent options follow the FFmpeg ones.
+
+@multitable @columnfractions .2 .2
+@item FFmpeg            @tab LAME
+@item b                 @tab b
+Set bitrate expressed in bits/s, LAME @code{bitrate} is expressed in
+kilobits/s.
+@item q                 @tab V
+Set quality setting for VBR.
+@item compression_level @tab q
+Set algorithm quality. Valid arguments are integers in the 0-9 range.
+@item reservoir         @tab N.A.
+Enable use of bit reservoir. LAME has this enabled by default.
+@item joint_stereo      @tab -m j
+Enable the encoder to use (on a frame by frame basis) either L/R
+stereo or mid/side stereo.
+@end multitable
+
+@section libopencore-amrnb
+
+OpenCORE Adaptive Multi-Rate Narrowband encoder.
+
+Requires the presence of the libopencore-amrnb headers and library during
+configuration. You need to explicitly configure the build with
+@code{--enable-libopencore-amrnb --enable-version3}.
+
+This is a mono-only encoder. Officially it only supports 8000Hz sample rate,
+but you can override it by setting @option{strict} to @samp{unofficial} or
+lower.
+
+@subsection Options
+
+@table @option
+
+@item b
+Set bitrate in bits per second. Only the following bitrates are supported,
+otherwise libavcodec will round to the nearest valid bitrate.
+
+@table @option
+@item 4750
+@item 5150
+@item 5900
+@item 6700
+@item 7400
+@item 7950
+@item 10200
+@item 12200
+@end table
+
+@item dtx
+Allow discontinuous transmission (generate comfort noise) when set to 1. The
+default value is 0 (disabled).
+
+@end table
+
+@section libtwolame
+
+TwoLAME MP2 encoder wrapper.
+
+Requires the presence of the libtwolame headers and library during
+configuration. You need to explicitly configure the build with
+@code{--enable-libtwolame}.
+
+@subsection Options Mapping
+
+The following options are supported by the libtwolame wrapper. The
+TwoLAME-equivalent options follow the FFmpeg ones and are in
+parentheses.
+
+@table @option
+@item b
+(b) Set bitrate in bits/s. Note that FFmpeg @code{b} option is
+expressed in bits/s, twolame @code{b} in kilobits/s. The default
+value is 128k.
+
+@item q
+(V) Set quality for experimental VBR support. Maximum value range is
+from -50 to 50, useful range is from -10 to 10.
+
+@item mode
+(mode) Set MPEG mode. Possible values:
+
+@table @samp
+@item auto
+Choose mode automatically based on the input. This is the default.
+@item stereo
+Stereo
+@item joint_stereo
+Joint stereo
+@item dual_channel
+Dual channel
+@item mono
+Mono
+@end table
+
+@item psymodel
+(psyc-mode) Set psychoacoustic model to use in encoding. The argument
+must be an integer between -1 and 4, inclusive. The higher the value,
+the better the quality. The default value is 3.
+
+@item energy_levels
+(energy) Enable energy levels extensions when set to 1. The default
+value is 0 (disabled).
+
+@item error_protection
+(protect) Enable CRC error protection when set to 1. The default value
+is 0 (disabled).
+
+@item copyright
+(copyright) Set MPEG audio copyright flag when set to 1. The default
+value is 0 (disabled).
+
+@item original
+(original) Set MPEG audio original flag when set to 1. The default
+value is 0 (disabled).
+
+@end table
+
+@section libvo-aacenc
+
+VisualOn AAC encoder.
+
+Requires the presence of the libvo-aacenc headers and library during
+configuration. You need to explicitly configure the build with
+@code{--enable-libvo-aacenc --enable-version3}.
+
+@subsection Options
+
+The VisualOn AAC encoder only support encoding AAC-LC and up to 2
+channels. It is also CBR-only. It is considered to be worse than the
+native experimental FFmpeg AAC encoder.
+
+@table @option
+
+@item b
+Bitrate.
+
+@end table
+
+@section libvo-amrwbenc
+
+VisualOn Adaptive Multi-Rate Wideband encoder.
+
+Requires the presence of the libvo-amrwbenc headers and library during
+configuration. You need to explicitly configure the build with
+@code{--enable-libvo-amrwbenc --enable-version3}.
+
+This is a mono-only encoder. Officially it only supports 16000Hz sample
+rate, but you can override it by setting @option{strict} to
+@samp{unofficial} or lower.
+
+@subsection Options
+
+@table @option
+
+@item b
+Set bitrate in bits/s. Only the following bitrates are supported, otherwise
+libavcodec will round to the nearest valid bitrate.
+
+@table @samp
+@item 6600
+@item 8850
+@item 12650
+@item 14250
+@item 15850
+@item 18250
+@item 19850
+@item 23050
+@item 23850
+@end table
+
+@item dtx
+Allow discontinuous transmission (generate comfort noise) when set to 1. The
+default value is 0 (disabled).
+
+@end table
+
+@section libopus
+
+libopus Opus Interactive Audio Codec encoder wrapper.
+
+Requires the presence of the libopus headers and library during
+configuration. You need to explicitly configure the build with
+@code{--enable-libopus}.
+
+@subsection Option Mapping
+
+Most libopus options are modeled after the @command{opusenc} utility from
+opus-tools. The following is an option mapping chart describing options
+supported by the libopus wrapper, and their @command{opusenc}-equivalent
+in parentheses.
+
+@table @option
+
+@item b (@emph{bitrate})
+Set the bit rate in bits/s.  FFmpeg's @option{b} option is
+expressed in bits/s, while @command{opusenc}'s @option{bitrate} in
+kilobits/s.
+
+@item vbr (@emph{vbr}, @emph{hard-cbr}, and @emph{cvbr})
+Set VBR mode. The FFmpeg @option{vbr} option has the following
+valid arguments, with the their @command{opusenc} equivalent options
+in parentheses:
+
+@table @samp
+@item off (@emph{hard-cbr})
+Use constant bit rate encoding.
+
+@item on (@emph{vbr})
+Use variable bit rate encoding (the default).
+
+@item constrained (@emph{cvbr})
+Use constrained variable bit rate encoding.
+@end table
+
+@item compression_level (@emph{comp})
+Set encoding algorithm complexity. Valid options are integers in
+the 0-10 range. 0 gives the fastest encodes but lower quality, while 10
+gives the highest quality but slowest encoding. The default is 10.
+
+@item frame_duration (@emph{framesize})
+Set maximum frame size, or duration of a frame in milliseconds. The
+argument must be exactly the following: 2.5, 5, 10, 20, 40, 60. Smaller
+frame sizes achieve lower latency but less quality at a given bitrate.
+Sizes greater than 20ms are only interesting at fairly low bitrates.
+The default of FFmpeg is 10ms, but is 20ms in @command{opusenc}.
+
+@item packet_loss (@emph{expect-loss})
+Set expected packet loss percentage. The default is 0.
+
+@item application (N.A.)
+Set intended application type. Valid options are listed below:
+
+@table @samp
+@item voip
+Favor improved speech intelligibility.
+@item audio
+Favor faithfulness to the input (the default).
+@item lowdelay
+Restrict to only the lowest delay modes.
+@end table
+
+@item cutoff (N.A.)
+Set cutoff bandwidth in Hz. The argument must be exactly one of the
+following: 4000, 6000, 8000, 12000, or 20000, corresponding to
+narrowband, mediumband, wideband, super wideband, and fullband
+respectively. The default is 0 (cutoff disabled).
+
+@end table
+
+@section libwavpack
+
+A wrapper providing WavPack encoding through libwavpack.
+
+Only lossless mode using 32-bit integer samples is supported currently.
+The @option{compression_level} option can be used to control speed vs.
+compression tradeoff, with the values mapped to libwavpack as follows:
+
+@table @option
+
+@item 0
+Fast mode - corresponding to the wavpack @option{-f} option.
+
+@item 1
+Normal (default) settings.
+
+@item 2
+High quality - corresponding to the wavpack @option{-h} option.
+
+@item 3
+Very high quality - corresponding to the wavpack @option{-hh} option.
+
+@item 4-8
+Same as 3, but with extra processing enabled - corresponding to the wavpack
+@option{-x} option. I.e. 4 is the same as @option{-x2} and 8 is the same as
+@option{-x6}.
+
+@end table
+
 @c man end AUDIO ENCODERS
 
 @chapter Video Encoders
@@ -581,40 +871,175 @@ For more information about libvpx see:
 
 @section libx264
 
-H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 format supported through
-libx264.
+x264 H.264/MPEG-4 AVC encoder wrapper.
 
 Requires the presence of the libx264 headers and library during
 configuration. You need to explicitly configure the build with
 @code{--enable-libx264}.
 
-@subsection Options
+x264 supports an impressive number of features, including 8x8 and 4x4 adaptive
+spatial transform, adaptive B-frame placement, CAVLC/CABAC entropy coding,
+interlacing (MBAFF), lossless mode, psy optimizations for detail retention
+(adaptive quantization, psy-RD, psy-trellis).
 
+The FFmpeg wrapper provides a mapping for most of them using global options
+that match those of the encoders and provides private options for the unique
+encoder options. Additionally an expert override is provided to directly pass
+a list of key=value tuples as accepted by x264_param_parse.
+
+@subsection Option Mapping
+
+The following options are supported by the x264 wrapper, the x264-equivalent
+options follow the FFmpeg ones.
+
+@multitable @columnfractions .2 .2
+@item b                 @tab bitrate
+FFmpeg @code{b} option is expressed in bits/s, x264 @code{bitrate} in kilobits/s.
+@item bf                @tab bframes
+Maximum number of B-frames.
+@item g                 @tab keyint
+Maximum GOP size.
+@item qmin              @tab qpmin
+@item qmax              @tab qpmax
+@item qdiff             @tab qpstep
+@item qblur             @tab qblur
+@item qcomp             @tab qcomp
+@item refs              @tab ref
+@item sc_threshold      @tab scenecut
+@item trellis           @tab trellis
+@item nr                @tab nr
+Noise reduction.
+@item me_range          @tab merange
+@item me_method         @tab me
+@item subq              @tab subme
+@item b_strategy        @tab b-adapt
+@item keyint_min        @tab keyint-min
+@item coder             @tab cabac
+Set coder to @code{ac} to use CABAC.
+@item cmp               @tab chroma-me
+Set to @code{chroma} to use chroma motion estimation.
+@item threads           @tab threads
+@item thread_type       @tab sliced_threads
+Set to @code{slice} to use sliced threading instead of frame threading.
+@item flags -cgop       @tab open-gop
+Set @code{-cgop} to use recovery points to close GOPs.
+@item rc_init_occupancy @tab vbv-init
+Initial buffer occupancy.
+@end multitable
+
+@subsection Private Options
 @table @option
+@item -preset @var{string}
+Set the encoding preset (cf. x264 --fullhelp).
+@item -tune @var{string}
+Tune the encoding params (cf. x264 --fullhelp).
+@item -profile @var{string}
+Set profile restrictions (cf. x264 --fullhelp).
+@item -fastfirstpass @var{integer}
+Use fast settings when encoding first pass.
+@item -crf @var{float}
+Select the quality for constant quality mode.
+@item -crf_max @var{float}
+In CRF mode, prevents VBV from lowering quality beyond this point.
+@item -qp @var{integer}
+Constant quantization parameter rate control method.
+@item -aq-mode @var{integer}
+AQ method
 
-@item preset @var{preset_name}
-Set the encoding preset.
+Possible values:
+@table @samp
+@item none
 
-@item tune @var{tune_name}
-Tune the encoding params.
+@item variance
+Variance AQ (complexity mask).
+@item autovariance
+Auto-variance AQ (experimental).
+@end table
+@item -aq-strength @var{float}
+AQ strength, reduces blocking and blurring in flat and textured areas.
+@item -psy @var{integer}
+Use psychovisual optimizations.
+@item -psy-rd @var{string}
+Strength of psychovisual optimization, in <psy-rd>:<psy-trellis> format.
+@item -rc-lookahead @var{integer}
+Number of frames to look ahead for frametype and ratecontrol.
+@item -weightb @var{integer}
+Weighted prediction for B-frames.
+@item -weightp @var{integer}
+Weighted prediction analysis method.
 
-@item fastfirstpass @var{bool}
-Use fast settings when encoding first pass, default value is 1.
+Possible values:
+@table @samp
+@item none
 
-@item profile @var{profile_name}
-Set profile restrictions.
+@item simple
 
-@item level @var{level}
-Specify level (as defined by Annex A).
-Deprecated in favor of @var{x264opts}.
+@item smart
 
-@item passlogfile @var{filename}
-Specify filename for 2 pass stats.
-Deprecated in favor of @var{x264opts} (see @var{stats} libx264 option).
+@end table
+@item -ssim @var{integer}
+Calculate and print SSIM stats.
+@item -intra-refresh @var{integer}
+Use Periodic Intra Refresh instead of IDR frames.
+@item -b-bias @var{integer}
+Influences how often B-frames are used.
+@item -b-pyramid @var{integer}
+Keep some B-frames as references.
 
-@item wpredp @var{wpred_type}
-Specify Weighted prediction for P-frames.
-Deprecated in favor of @var{x264opts} (see @var{weightp} libx264 option).
+Possible values:
+@table @samp
+@item none
+
+@item strict
+Strictly hierarchical pyramid.
+@item normal
+Non-strict (not Blu-ray compatible).
+@end table
+@item -mixed-refs @var{integer}
+One reference per partition, as opposed to one reference per macroblock.
+@item -8x8dct @var{integer}
+High profile 8x8 transform.
+@item -fast-pskip @var{integer}
+@item -aud @var{integer}
+Use access unit delimiters.
+@item -mbtree @var{integer}
+Use macroblock tree ratecontrol.
+@item -deblock @var{string}
+Loop filter parameters, in <alpha:beta> form.
+@item -cplxblur @var{float}
+Reduce fluctuations in QP (before curve compression).
+@item -partitions @var{string}
+A comma-separated list of partitions to consider, possible values: p8x8, p4x4, b8x8, i8x8, i4x4, none, all.
+@item -direct-pred @var{integer}
+Direct MV prediction mode
+
+Possible values:
+@table @samp
+@item none
+
+@item spatial
+
+@item temporal
+
+@item auto
+
+@end table
+@item -slice-max-size @var{integer}
+Limit the size of each slice in bytes.
+@item -stats @var{string}
+Filename for 2 pass stats.
+@item -nal-hrd @var{integer}
+Signal HRD information (requires vbv-bufsize; cbr not allowed in .mp4).
+
+Possible values:
+@table @samp
+@item none
+
+@item vbr
+
+@item cbr
+
+@end table
 
 @item x264opts @var{options}
 Allow to set any x264 option, see @code{x264 --fullhelp} for a list.
@@ -623,7 +1048,6 @@ Allow to set any x264 option, see @code{x264 --fullhelp} for a list.
 ":". In @var{filter} and @var{psy-rd} options that use ":" as a separator
 themselves, use "," instead. They accept it as well since long ago but this
 is kept undocumented for some reason.
-@end table
 
 For example to specify libx264 encoding options with @command{ffmpeg}:
 @example
@@ -632,5 +1056,95 @@ ffmpeg -i foo.mpg -vcodec libx264 -x264opts keyint=123:min-keyint=20 -an out.mkv
 
 For more information about libx264 and the supported options see:
 @url{http://www.videolan.org/developers/x264.html}
+
+@item -x264-params @var{string}
+Override the x264 configuration using a :-separated list of key=value parameters.
+@example
+-x264-params level=30:bframes=0:weightp=0:cabac=0:ref=1:vbv-maxrate=768:vbv-bufsize=2000:analyse=all:me=umh:no-fast-pskip=1:subq=6:8x8dct=0:trellis=0
+@end example
+@end table
+
+Encoding avpresets for common usages are provided so they can be used with the
+general presets system (e.g. passing the @code{-pre} option).
+
+@section png
+
+PNG image encoder.
+
+@subsection Private options
+
+@table @option
+@item dpi @var{integer}
+Set physical density of pixels, in dots per inch, unset by default
+@item dpm @var{integer}
+Set physical density of pixels, in dots per meter, unset by default
+@end table
+
+@section ProRes
+
+Apple ProRes encoder.
+
+FFmpeg contains 2 ProRes encoders, the prores-aw and prores-ks encoder.
+The used encoder can be choosen with the @code{-vcodec} option.
+
+@subsection Private Options for prores-ks
+
+@table @option
+@item profile @var{integer}
+Select the ProRes profile to encode
+@table @samp
+@item proxy
+@item lt
+@item standard
+@item hq
+@item 4444
+@end table
+
+@item quant_mat @var{integer}
+Select quantization matrix.
+@table @samp
+@item auto
+@item default
+@item proxy
+@item lt
+@item standard
+@item hq
+@end table
+If set to @var{auto}, the matrix matching the profile will be picked.
+If not set, the matrix providing the highest quality, @var{default}, will be
+picked.
+
+@item bits_per_mb @var{integer}
+How many bits to allot for coding one macroblock. Different profiles use
+between 200 and 2400 bits per macroblock, the maximum is 8000.
+
+@item mbs_per_slice @var{integer}
+Number of macroblocks in each slice (1-8); the default value (8)
+should be good in almost all situations.
+
+@item vendor @var{string}
+Override the 4-byte vendor ID.
+A custom vendor ID like @var{apl0} would claim the stream was produced by
+the Apple encoder.
+
+@item alpha_bits @var{integer}
+Specify number of bits for alpha component.
+Possible values are @var{0}, @var{8} and @var{16}.
+Use @var{0} to disable alpha plane coding.
+
+@end table
+
+@subsection Speed considerations
+
+In the default mode of operation the encoder has to honor frame constraints
+(i.e. not produc frames with size bigger than requested) while still making
+output picture as good as possible.
+A frame containing a lot of small details is harder to compress and the encoder
+would spend more time searching for appropriate quantizers for each slice.
+
+Setting a higher @option{bits_per_mb} limit will improve the speed.
+
+For the fastest encoding speed set the @option{qscale} parameter (4 is the
+recommended value) and do not set a size constraint.
 
 @c man end VIDEO ENCODERS

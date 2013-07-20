@@ -93,9 +93,9 @@ typedef enum {
 } svx8_compression_type;
 
 typedef struct {
-    uint64_t  body_pos;
+    int64_t  body_pos;
+    int64_t  body_end;
     uint32_t  body_size;
-    uint32_t  sent_bytes;
     svx8_compression_type   svx8_compression;
     unsigned  maud_bits;
     unsigned  maud_compression;
@@ -227,6 +227,7 @@ static int iff_read_header(AVFormatContext *s)
         case ID_DBOD:
         case ID_MDAT:
             iff->body_pos = avio_tell(pb);
+            iff->body_end = iff->body_pos + data_size;
             iff->body_size = data_size;
             break;
 
@@ -249,6 +250,11 @@ static int iff_read_header(AVFormatContext *s)
             break;
 
         case ID_CMAP:
+            if (data_size < 3 || data_size > 768 || data_size % 3) {
+                 av_log(s, AV_LOG_ERROR, "Invalid CMAP chunk size %d\n",
+                        data_size);
+                 return AVERROR_INVALIDDATA;
+            }
             st->codec->extradata_size = data_size + IFF_EXTRA_VIDEO_SIZE;
             st->codec->extradata      = av_malloc(data_size + IFF_EXTRA_VIDEO_SIZE + FF_INPUT_BUFFER_PADDING_SIZE);
             if (!st->codec->extradata)
@@ -295,7 +301,7 @@ static int iff_read_header(AVFormatContext *s)
             else if (fmt_size == sizeof(deep_abgr) && !memcmp(fmt, deep_abgr, sizeof(deep_abgr)))
                 st->codec->pix_fmt = AV_PIX_FMT_ABGR;
             else {
-                av_log_ask_for_sample(s, "unsupported color format\n");
+                avpriv_request_sample(s, "color format %.16s", fmt);
                 return AVERROR_PATCHWELCOME;
             }
             break;
@@ -361,7 +367,7 @@ static int iff_read_header(AVFormatContext *s)
             } else if (iff->maud_bits ==  8 && iff->maud_compression == 3) {
                 st->codec->codec_id = AV_CODEC_ID_PCM_MULAW;
             } else {
-                av_log_ask_for_sample(s, "unsupported compression %d and bit depth %d\n", iff->maud_compression, iff->maud_bits);
+                avpriv_request_sample(s, "compression %d and bit depth %d", iff->maud_compression, iff->maud_bits);
                 return AVERROR_PATCHWELCOME;
             }
 
@@ -409,6 +415,7 @@ static int iff_read_header(AVFormatContext *s)
             if (!st->codec->extradata)
                 return AVERROR(ENOMEM);
         }
+        av_assert0(st->codec->extradata_size >= IFF_EXTRA_VIDEO_SIZE);
         buf = st->codec->extradata;
         bytestream_put_be16(&buf, IFF_EXTRA_VIDEO_SIZE);
         bytestream_put_byte(&buf, iff->bitmap_compression);
@@ -434,14 +441,14 @@ static int iff_read_packet(AVFormatContext *s,
     AVIOContext *pb = s->pb;
     AVStream *st = s->streams[0];
     int ret;
+    int64_t pos = avio_tell(pb);
 
-    if(iff->sent_bytes >= iff->body_size)
+    if (pos >= iff->body_end)
         return AVERROR_EOF;
 
     if (st->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
         if (st->codec->codec_tag == ID_MAUD) {
-            ret = av_get_packet(pb, pkt,
-                                FFMIN(iff->body_size - iff->sent_bytes, 1024 * st->codec->block_align));
+            ret = av_get_packet(pb, pkt, FFMIN(iff->body_end - pos, 1024 * st->codec->block_align));
         } else {
             ret = av_get_packet(pb, pkt, iff->body_size);
         }
@@ -459,11 +466,10 @@ static int iff_read_packet(AVFormatContext *s,
         av_assert0(0);
     }
 
-    if(iff->sent_bytes == 0)
+    if (pos == iff->body_pos)
         pkt->flags |= AV_PKT_FLAG_KEY;
     if (ret < 0)
         return ret;
-    iff->sent_bytes += ret;
     pkt->stream_index = 0;
     return ret;
 }
@@ -475,4 +481,5 @@ AVInputFormat ff_iff_demuxer = {
     .read_probe     = iff_probe,
     .read_header    = iff_read_header,
     .read_packet    = iff_read_packet,
+    .flags          = AVFMT_GENERIC_INDEX | AVFMT_NO_BYTE_SEEK,
 };

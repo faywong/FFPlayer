@@ -33,7 +33,7 @@
 #include <string.h>
 
 #include "avcodec.h"
-#include "dsputil.h"
+#include "internal.h"
 #include "msrledec.h"
 
 typedef struct MsrleContext {
@@ -67,11 +67,10 @@ static av_cold int msrle_decode_init(AVCodecContext *avctx)
         break;
     default:
         av_log(avctx, AV_LOG_ERROR, "unsupported bits per sample\n");
-        return -1;
+        return AVERROR_INVALIDDATA;
     }
 
     avcodec_get_frame_defaults(&s->frame);
-    s->frame.data[0] = NULL;
 
     if (avctx->extradata_size >= 4)
         for (i = 0; i < FFMIN(avctx->extradata_size, AVPALETTE_SIZE)/4; i++)
@@ -88,16 +87,13 @@ static int msrle_decode_frame(AVCodecContext *avctx,
     int buf_size = avpkt->size;
     MsrleContext *s = avctx->priv_data;
     int istride = FFALIGN(avctx->width*avctx->bits_per_coded_sample, 32) / 8;
+    int ret;
 
     s->buf = buf;
     s->size = buf_size;
 
-    s->frame.reference = 3;
-    s->frame.buffer_hints = FF_BUFFER_HINTS_VALID | FF_BUFFER_HINTS_PRESERVE | FF_BUFFER_HINTS_REUSABLE;
-    if (avctx->reget_buffer(avctx, &s->frame)) {
-        av_log(avctx, AV_LOG_ERROR, "reget_buffer() failed\n");
-        return -1;
-    }
+    if ((ret = ff_reget_buffer(avctx, &s->frame)) < 0)
+        return ret;
 
     if (avctx->bits_per_coded_sample > 1 && avctx->bits_per_coded_sample <= 8) {
         const uint8_t *pal = av_packet_get_side_data(avpkt, AV_PKT_DATA_PALETTE, NULL);
@@ -136,8 +132,10 @@ static int msrle_decode_frame(AVCodecContext *avctx,
         ff_msrle_decode(avctx, (AVPicture*)&s->frame, avctx->bits_per_coded_sample, &s->gb);
     }
 
+    if ((ret = av_frame_ref(data, &s->frame)) < 0)
+        return ret;
+
     *got_frame      = 1;
-    *(AVFrame*)data = s->frame;
 
     /* report that the buffer was completely consumed */
     return buf_size;
@@ -148,8 +146,7 @@ static av_cold int msrle_decode_end(AVCodecContext *avctx)
     MsrleContext *s = avctx->priv_data;
 
     /* release the last frame */
-    if (s->frame.data[0])
-        avctx->release_buffer(avctx, &s->frame);
+    av_frame_unref(&s->frame);
 
     return 0;
 }

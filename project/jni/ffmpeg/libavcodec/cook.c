@@ -123,7 +123,6 @@ typedef struct cook {
 
     AVCodecContext*     avctx;
     DSPContext          dsp;
-    AVFrame             frame;
     GetBitContext       gb;
     /* stream data */
     int                 num_vectors;
@@ -956,6 +955,7 @@ static int decode_subpacket(COOKContext *q, COOKSubpacket *p,
 static int cook_decode_frame(AVCodecContext *avctx, void *data,
                              int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     COOKContext *q = avctx->priv_data;
@@ -969,12 +969,10 @@ static int cook_decode_frame(AVCodecContext *avctx, void *data,
 
     /* get output buffer */
     if (q->discarded_packets >= 2) {
-        q->frame.nb_samples = q->samples_per_channel;
-        if ((ret = ff_get_buffer(avctx, &q->frame)) < 0) {
-            av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+        frame->nb_samples = q->samples_per_channel;
+        if ((ret = ff_get_buffer(avctx, frame, 0)) < 0)
             return ret;
-        }
-        samples = (float **)q->frame.extended_data;
+        samples = (float **)frame->extended_data;
     }
 
     /* estimate subpacket sizes */
@@ -1015,8 +1013,7 @@ static int cook_decode_frame(AVCodecContext *avctx, void *data,
         return avctx->block_align;
     }
 
-    *got_frame_ptr    = 1;
-    *(AVFrame *) data = q->frame;
+    *got_frame_ptr = 1;
 
     return avctx->block_align;
 }
@@ -1092,6 +1089,11 @@ static av_cold int cook_decode_init(AVCodecContext *avctx)
         if (extradata_size >= 8) {
             bytestream_get_be32(&edata_ptr);    // Unknown unused
             q->subpacket[s].js_subband_start = bytestream_get_be16(&edata_ptr);
+            if (q->subpacket[s].js_subband_start >= 51) {
+                av_log(avctx, AV_LOG_ERROR, "js_subband_start %d is too large\n", q->subpacket[s].js_subband_start);
+                return AVERROR_INVALIDDATA;
+            }
+
             q->subpacket[s].js_vlc_bits = bytestream_get_be16(&edata_ptr);
             extradata_size -= 8;
         }
@@ -1113,7 +1115,7 @@ static av_cold int cook_decode_init(AVCodecContext *avctx)
         switch (q->subpacket[s].cookversion) {
         case MONO:
             if (avctx->channels != 1) {
-                av_log_ask_for_sample(avctx, "Container channels != 1.\n");
+                avpriv_request_sample(avctx, "Container channels != 1");
                 return AVERROR_PATCHWELCOME;
             }
             av_log(avctx, AV_LOG_DEBUG, "MONO\n");
@@ -1127,7 +1129,7 @@ static av_cold int cook_decode_init(AVCodecContext *avctx)
             break;
         case JOINT_STEREO:
             if (avctx->channels != 2) {
-                av_log_ask_for_sample(avctx, "Container channels != 2.\n");
+                avpriv_request_sample(avctx, "Container channels != 2");
                 return AVERROR_PATCHWELCOME;
             }
             av_log(avctx, AV_LOG_DEBUG, "JOINT_STEREO\n");
@@ -1167,7 +1169,8 @@ static av_cold int cook_decode_init(AVCodecContext *avctx)
 
             break;
         default:
-            av_log_ask_for_sample(avctx, "Unknown Cook version.\n");
+            avpriv_request_sample(avctx, "Cook version %d",
+                                  q->subpacket[s].cookversion);
             return AVERROR_PATCHWELCOME;
         }
 
@@ -1183,7 +1186,7 @@ static av_cold int cook_decode_init(AVCodecContext *avctx)
 
         /* Try to catch some obviously faulty streams, othervise it might be exploitable */
         if (q->subpacket[s].total_subbands > 53) {
-            av_log_ask_for_sample(avctx, "total_subbands > 53\n");
+            avpriv_request_sample(avctx, "total_subbands > 53");
             return AVERROR_PATCHWELCOME;
         }
 
@@ -1195,11 +1198,11 @@ static av_cold int cook_decode_init(AVCodecContext *avctx)
         }
 
         if (q->subpacket[s].subbands > 50) {
-            av_log_ask_for_sample(avctx, "subbands > 50\n");
+            avpriv_request_sample(avctx, "subbands > 50");
             return AVERROR_PATCHWELCOME;
         }
         if (q->subpacket[s].subbands == 0) {
-            av_log_ask_for_sample(avctx, "subbands is 0\n");
+            avpriv_request_sample(avctx, "subbands = 0");
             return AVERROR_PATCHWELCOME;
         }
         q->subpacket[s].gains1.now      = q->subpacket[s].gain_1;
@@ -1215,7 +1218,7 @@ static av_cold int cook_decode_init(AVCodecContext *avctx)
         q->num_subpackets++;
         s++;
         if (s > MAX_SUBPACKETS) {
-            av_log_ask_for_sample(avctx, "Too many subpackets > 5\n");
+            avpriv_request_sample(avctx, "subpackets > %d", MAX_SUBPACKETS);
             return AVERROR_PATCHWELCOME;
         }
     }
@@ -1257,8 +1260,7 @@ static av_cold int cook_decode_init(AVCodecContext *avctx)
     /* Try to catch some obviously faulty streams, othervise it might be exploitable */
     if (q->samples_per_channel != 256 && q->samples_per_channel != 512 &&
         q->samples_per_channel != 1024) {
-        av_log_ask_for_sample(avctx,
-                              "unknown amount of samples_per_channel = %d\n",
+        avpriv_request_sample(avctx, "samples_per_channel = %d",
                               q->samples_per_channel);
         return AVERROR_PATCHWELCOME;
     }
@@ -1268,9 +1270,6 @@ static av_cold int cook_decode_init(AVCodecContext *avctx)
         avctx->channel_layout = channel_mask;
     else
         avctx->channel_layout = (avctx->channels == 2) ? AV_CH_LAYOUT_STEREO : AV_CH_LAYOUT_MONO;
-
-    avcodec_get_frame_defaults(&q->frame);
-    avctx->coded_frame = &q->frame;
 
 #ifdef DEBUG
     dump_cook_context(q);

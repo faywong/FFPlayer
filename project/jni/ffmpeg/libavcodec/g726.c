@@ -77,7 +77,6 @@ typedef struct G726Tables {
 
 typedef struct G726Context {
     AVClass *class;
-    AVFrame frame;
     G726Tables tbls;    /**< static tables needed for computation */
 
     Float11 sr[2];      /**< prev. reconstructed samples */
@@ -332,27 +331,12 @@ static av_cold int g726_encode_init(AVCodecContext *avctx)
 
     g726_reset(c);
 
-#if FF_API_OLD_ENCODE_AUDIO
-    avctx->coded_frame = avcodec_alloc_frame();
-    if (!avctx->coded_frame)
-        return AVERROR(ENOMEM);
-    avctx->coded_frame->key_frame = 1;
-#endif
-
     /* select a frame size that will end on a byte boundary and have a size of
        approximately 1024 bytes */
     avctx->frame_size = ((int[]){ 4096, 2736, 2048, 1640 })[c->code_size - 2];
 
     return 0;
 }
-
-#if FF_API_OLD_ENCODE_AUDIO
-static av_cold int g726_encode_close(AVCodecContext *avctx)
-{
-    av_freep(&avctx->coded_frame);
-    return 0;
-}
-#endif
 
 static int g726_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
                              const AVFrame *frame, int *got_packet_ptr)
@@ -363,7 +347,7 @@ static int g726_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     int i, ret, out_size;
 
     out_size = (frame->nb_samples * c->code_size + 7) / 8;
-    if ((ret = ff_alloc_packet2(avctx, avpkt, out_size)))
+    if ((ret = ff_alloc_packet2(avctx, avpkt, out_size)) < 0)
         return ret;
     init_put_bits(&pb, avpkt->data, avpkt->size);
 
@@ -384,7 +368,7 @@ static const AVOption options[] = {
     { NULL },
 };
 
-static const AVClass class = {
+static const AVClass g726_class = {
     .class_name = "g726",
     .item_name  = av_default_item_name,
     .option     = options,
@@ -403,14 +387,11 @@ AVCodec ff_adpcm_g726_encoder = {
     .priv_data_size = sizeof(G726Context),
     .init           = g726_encode_init,
     .encode2        = g726_encode_frame,
-#if FF_API_OLD_ENCODE_AUDIO
-    .close          = g726_encode_close,
-#endif
     .capabilities   = CODEC_CAP_SMALL_LAST_FRAME,
     .sample_fmts    = (const enum AVSampleFormat[]){ AV_SAMPLE_FMT_S16,
                                                      AV_SAMPLE_FMT_NONE },
     .long_name      = NULL_IF_CONFIG_SMALL("G.726 ADPCM"),
-    .priv_class     = &class,
+    .priv_class     = &g726_class,
     .defaults       = defaults,
 };
 #endif
@@ -432,15 +413,13 @@ static av_cold int g726_decode_init(AVCodecContext *avctx)
 
     avctx->sample_fmt = AV_SAMPLE_FMT_S16;
 
-    avcodec_get_frame_defaults(&c->frame);
-    avctx->coded_frame = &c->frame;
-
     return 0;
 }
 
 static int g726_decode_frame(AVCodecContext *avctx, void *data,
                              int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     G726Context *c = avctx->priv_data;
@@ -451,12 +430,10 @@ static int g726_decode_frame(AVCodecContext *avctx, void *data,
     out_samples = buf_size * 8 / c->code_size;
 
     /* get output buffer */
-    c->frame.nb_samples = out_samples;
-    if ((ret = ff_get_buffer(avctx, &c->frame)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+    frame->nb_samples = out_samples;
+    if ((ret = ff_get_buffer(avctx, frame, 0)) < 0)
         return ret;
-    }
-    samples = (int16_t *)c->frame.data[0];
+    samples = (int16_t *)frame->data[0];
 
     init_get_bits(&gb, buf, buf_size * 8);
 
@@ -466,8 +443,7 @@ static int g726_decode_frame(AVCodecContext *avctx, void *data,
     if (get_bits_left(&gb) > 0)
         av_log(avctx, AV_LOG_ERROR, "Frame invalidly split, missing parser?\n");
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = c->frame;
+    *got_frame_ptr = 1;
 
     return buf_size;
 }

@@ -38,6 +38,12 @@ FFLIBS-yes :=
 include $(FFMPEG_ROOT_DIR)/$(FFMPEG_LIB_DIR)/Makefile.android
 -include $(FFMPEG_ROOT_DIR)/$(FFMPEG_LIB_DIR)/$(TARGET_ARCH)/Makefile
 
+ifeq ($(VERSION_BRANCH),2.0)
+    include $(FFMPEG_ROOT_DIR)/arch.mak
+endif
+ifeq ($(VERSION_BRANCH),1.2)
+    include $(FFMPEG_ROOT_DIR)/arch.mak
+endif
 ifeq ($(VERSION_BRANCH),1.1)
     include $(FFMPEG_ROOT_DIR)/arch.mak
 endif
@@ -50,14 +56,9 @@ endif
 
 OBJS += $(OBJS-yes)
 
-#FFNAME := lib$(NAME)$(VERSION_SUFFIX)
-FFNAME := $(NAME)
+FFNAME := lib$(NAME)$(VERSION_SUFFIX)
 FFLIBS += $(FFLIBS-yes)
-#FFLIBS := $(foreach NAME, $(FFLIBS), lib$(NAME)$(VERSION_SUFFIX))
-FFLIBS := $(foreach NAME, $(FFLIBS), $(NAME))
-ifeq ($(FFNAME),avfilter)
-FFLIBS += avcodec avformat swscale
-endif
+FFLIBS := $(foreach NAME, $(FFLIBS), lib$(NAME)$(VERSION_SUFFIX))
 FFLIBS := $(sort $(FFLIBS))
 FFCFLAGS := -DHAVE_AV_CONFIG_H $(CFLAGS) \
 
@@ -115,7 +116,6 @@ C_FILES := $(patsubst %.o,%.c, $(C_OBJS))
 
 FFFILES := $(sort $(ASM_FILES)) $(sort $(S_FILES)) $(sort $(C_FILES))
 
-ifeq ($(FFMPEG_VERBOSE_BUILD),yes)
 $(warning ============================================================)
 $(warning Library name: '$(FFNAME)')
 $(warning =============================)
@@ -123,6 +123,5 @@ $(warning Files that will be compiled: '$(FFFILES)')
 $(warning =============================)
 $(warning Libraries that will be included: '$(FFLIBS)')
 $(warning ============================================================)
-endif
 
 FFFILES := $(addprefix $(FFMPEG_LIB_DIR)/, $(FFFILES))

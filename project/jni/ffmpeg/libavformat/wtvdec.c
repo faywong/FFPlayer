@@ -47,11 +47,11 @@
  */
 
 typedef struct {
-    AVIOContext *pb_filesystem;  /** file system (AVFormatContext->pb) */
+    AVIOContext *pb_filesystem;  /**< file system (AVFormatContext->pb) */
 
-    int sector_bits;     /** sector shift bits; used to convert sector number into pb_filesystem offset */
-    uint32_t *sectors;   /** file allocation table */
-    int nb_sectors;      /** number of sectors */
+    int sector_bits;     /**< sector shift bits; used to convert sector number into pb_filesystem offset */
+    uint32_t *sectors;   /**< file allocation table */
+    int nb_sectors;      /**< number of sectors */
 
     int error;
     int64_t position;
@@ -200,6 +200,9 @@ static AVIOContext * wtvfile_open_sector(int first_sector, uint64_t length, int 
         return NULL;
     }
 
+    if ((int64_t)wf->sectors[wf->nb_sectors - 1] << WTV_SECTOR_BITS > avio_tell(s->pb))
+        av_log(s, AV_LOG_WARNING, "truncated file\n");
+
     /* check length */
     length &= 0xFFFFFFFFFFFF;
     if (length > ((int64_t)wf->nb_sectors << wf->sector_bits)) {
@@ -303,10 +306,10 @@ typedef struct {
 } WtvStream;
 
 typedef struct {
-    AVIOContext *pb;       /** timeline file */
+    AVIOContext *pb;       /**< timeline file */
     int64_t epoch;
-    int64_t pts;             /** pts for next data chunk */
-    int64_t last_valid_pts;  /** latest valid pts, used for interative seeking */
+    int64_t pts;             /**< pts for next data chunk */
+    int64_t last_valid_pts;  /**< latest valid pts, used for interative seeking */
 
     /* maintain private seek index, as the AVIndexEntry->pos is relative to the
        start of the 'timeline' file, not the file system (AVFormatContext->pb) */
@@ -433,6 +436,7 @@ static void get_attachment(AVFormatContext *s, AVIOContext *pb, int length)
     av_dict_set(&st->metadata, "title", description, 0);
     st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
     st->codec->codec_id   = AV_CODEC_ID_MJPEG;
+    st->id = -1;
     ret = av_get_packet(pb, &st->attached_pic, filesize);
     if (ret < 0)
         goto done;
@@ -445,8 +449,16 @@ done:
 
 static void get_tag(AVFormatContext *s, AVIOContext *pb, const char *key, int type, int length)
 {
-    int buf_size = FFMAX(2*length, LEN_PRETTY_GUID) + 1;
-    char *buf = av_malloc(buf_size);
+    int buf_size;
+    char *buf;
+
+    if (!strcmp(key, "WM/MediaThumbType")) {
+        avio_skip(pb, length);
+        return;
+    }
+
+    buf_size = FFMAX(2*length, LEN_PRETTY_GUID) + 1;
+    buf = av_malloc(buf_size);
     if (!buf)
         return;
 

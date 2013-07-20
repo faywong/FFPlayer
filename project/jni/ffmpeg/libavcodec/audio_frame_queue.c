@@ -19,12 +19,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/attributes.h"
 #include "libavutil/common.h"
 #include "audio_frame_queue.h"
 #include "internal.h"
 #include "libavutil/avassert.h"
 
-void ff_af_queue_init(AVCodecContext *avctx, AudioFrameQueue *afq)
+av_cold void ff_af_queue_init(AVCodecContext *avctx, AudioFrameQueue *afq)
 {
     afq->avctx = avctx;
     afq->remaining_delay   = avctx->delay;
@@ -57,7 +58,7 @@ int ff_af_queue_add(AudioFrameQueue *afq, const AVFrame *f)
                                       (AVRational){ 1, afq->avctx->sample_rate });
         new->pts -= afq->remaining_delay;
         if(afq->frame_count && new[-1].pts >= new->pts)
-            av_log(afq->avctx, AV_LOG_WARNING, "Que input is backward in time\n");
+            av_log(afq->avctx, AV_LOG_WARNING, "Queue input is backward in time\n");
     } else {
         new->pts = AV_NOPTS_VALUE;
     }

@@ -9,3 +9,4 @@ project/jni/application/*/libapplication*.so
 project/.idea
 .gitignore
 *.swp
+*/*.tags

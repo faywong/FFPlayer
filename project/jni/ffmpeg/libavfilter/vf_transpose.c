@@ -32,6 +32,7 @@
 #include "libavutil/pixdesc.h"
 #include "libavutil/imgutils.h"
 #include "libavutil/internal.h"
+#include "libavutil/opt.h"
 #include "avfilter.h"
 #include "formats.h"
 #include "internal.h"
@@ -43,71 +44,38 @@ typedef enum {
     TRANSPOSE_PT_TYPE_PORTRAIT,
 } PassthroughType;
 
+enum TransposeDir {
+    TRANSPOSE_CCLOCK_FLIP,
+    TRANSPOSE_CLOCK,
+    TRANSPOSE_CCLOCK,
+    TRANSPOSE_CLOCK_FLIP,
+};
+
 typedef struct {
     const AVClass *class;
     int hsub, vsub;
     int pixsteps[4];
 
-    /* 0    Rotate by 90 degrees counterclockwise and vflip. */
-    /* 1    Rotate by 90 degrees clockwise.                  */
-    /* 2    Rotate by 90 degrees counterclockwise.           */
-    /* 3    Rotate by 90 degrees clockwise and vflip.        */
-    int dir;
     PassthroughType passthrough; ///< landscape passthrough mode enabled
+    enum TransposeDir dir;
 } TransContext;
-
-#define OFFSET(x) offsetof(TransContext, x)
-#define FLAGS AV_OPT_FLAG_FILTERING_PARAM|AV_OPT_FLAG_VIDEO_PARAM
-
-static const AVOption transpose_options[] = {
-    { "dir", "set transpose direction", OFFSET(dir), AV_OPT_TYPE_INT, {.i64=0},  0, 7, FLAGS },
-
-    { "passthrough", "do not apply transposition if the input matches the specified geometry",
-      OFFSET(passthrough), AV_OPT_TYPE_INT, {.i64=TRANSPOSE_PT_TYPE_NONE},  0, INT_MAX, FLAGS, "passthrough" },
-    { "none",      "always apply transposition",   0, AV_OPT_TYPE_CONST, {.i64=TRANSPOSE_PT_TYPE_NONE},      INT_MIN, INT_MAX, FLAGS, "passthrough" },
-    { "portrait",  "preserve portrait geometry",   0, AV_OPT_TYPE_CONST, {.i64=TRANSPOSE_PT_TYPE_PORTRAIT},  INT_MIN, INT_MAX, FLAGS, "passthrough" },
-    { "landscape", "preserve landscape geometry",  0, AV_OPT_TYPE_CONST, {.i64=TRANSPOSE_PT_TYPE_LANDSCAPE}, INT_MIN, INT_MAX, FLAGS, "passthrough" },
-
-    { NULL },
-};
-
-AVFILTER_DEFINE_CLASS(transpose);
-
-static av_cold int init(AVFilterContext *ctx, const char *args)
-{
-    TransContext *trans = ctx->priv;
-    const char *shorthand[] = { "dir", "passthrough", NULL };
-
-    trans->class = &transpose_class;
-    av_opt_set_defaults(trans);
-
-    return av_opt_set_from_string(trans, args, shorthand, "=", ":");
-}
 
 static int query_formats(AVFilterContext *ctx)
 {
-    static const enum AVPixelFormat pix_fmts[] = {
-        AV_PIX_FMT_ARGB,         AV_PIX_FMT_RGBA,
-        AV_PIX_FMT_ABGR,         AV_PIX_FMT_BGRA,
-        AV_PIX_FMT_RGB24,        AV_PIX_FMT_BGR24,
-        AV_PIX_FMT_RGB565BE,     AV_PIX_FMT_RGB565LE,
-        AV_PIX_FMT_RGB555BE,     AV_PIX_FMT_RGB555LE,
-        AV_PIX_FMT_BGR565BE,     AV_PIX_FMT_BGR565LE,
-        AV_PIX_FMT_BGR555BE,     AV_PIX_FMT_BGR555LE,
-        AV_PIX_FMT_GRAY16BE,     AV_PIX_FMT_GRAY16LE,
-        AV_PIX_FMT_YUV420P16LE,  AV_PIX_FMT_YUV420P16BE,
-        AV_PIX_FMT_YUV444P16LE,  AV_PIX_FMT_YUV444P16BE,
-        AV_PIX_FMT_NV12,         AV_PIX_FMT_NV21,
-        AV_PIX_FMT_RGB8,         AV_PIX_FMT_BGR8,
-        AV_PIX_FMT_RGB4_BYTE,    AV_PIX_FMT_BGR4_BYTE,
-        AV_PIX_FMT_YUV444P,      AV_PIX_FMT_YUVJ444P,
-        AV_PIX_FMT_YUV420P,      AV_PIX_FMT_YUVJ420P,
-        AV_PIX_FMT_YUV410P,
-        AV_PIX_FMT_YUVA420P,     AV_PIX_FMT_GRAY8,
-        AV_PIX_FMT_NONE
-    };
+    AVFilterFormats *pix_fmts = NULL;
+    int fmt;
 
-    ff_set_common_formats(ctx, ff_make_format_list(pix_fmts));
+    for (fmt = 0; fmt < AV_PIX_FMT_NB; fmt++) {
+        const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(fmt);
+        if (!(desc->flags & AV_PIX_FMT_FLAG_PAL ||
+              desc->flags & AV_PIX_FMT_FLAG_HWACCEL ||
+              desc->flags & AV_PIX_FMT_FLAG_BITSTREAM ||
+              desc->log2_chroma_w != desc->log2_chroma_h))
+            ff_add_format(&pix_fmts, fmt);
+    }
+
+
+    ff_set_common_formats(ctx, pix_fmts);
     return 0;
 }
 
@@ -156,47 +124,47 @@ static int config_props_output(AVFilterLink *outlink)
     return 0;
 }
 
-static AVFilterBufferRef *get_video_buffer(AVFilterLink *inlink, int perms, int w, int h)
+static AVFrame *get_video_buffer(AVFilterLink *inlink, int w, int h)
 {
     TransContext *trans = inlink->dst->priv;
 
     return trans->passthrough ?
-        ff_null_get_video_buffer   (inlink, perms, w, h) :
-        ff_default_get_video_buffer(inlink, perms, w, h);
+        ff_null_get_video_buffer   (inlink, w, h) :
+        ff_default_get_video_buffer(inlink, w, h);
 }
 
-static int filter_frame(AVFilterLink *inlink, AVFilterBufferRef *in)
+static int filter_frame(AVFilterLink *inlink, AVFrame *in)
 {
     TransContext *trans = inlink->dst->priv;
     AVFilterLink *outlink = inlink->dst->outputs[0];
-    AVFilterBufferRef *out;
+    AVFrame *out;
     int plane;
 
     if (trans->passthrough)
         return ff_filter_frame(outlink, in);
 
-    out = ff_get_video_buffer(outlink, AV_PERM_WRITE, outlink->w, outlink->h);
+    out = ff_get_video_buffer(outlink, outlink->w, outlink->h);
     if (!out) {
-        avfilter_unref_bufferp(&in);
+        av_frame_free(&in);
         return AVERROR(ENOMEM);
     }
 
     out->pts = in->pts;
 
-    if (in->video->sample_aspect_ratio.num == 0) {
-        out->video->sample_aspect_ratio = in->video->sample_aspect_ratio;
+    if (in->sample_aspect_ratio.num == 0) {
+        out->sample_aspect_ratio = in->sample_aspect_ratio;
     } else {
-        out->video->sample_aspect_ratio.num = in->video->sample_aspect_ratio.den;
-        out->video->sample_aspect_ratio.den = in->video->sample_aspect_ratio.num;
+        out->sample_aspect_ratio.num = in->sample_aspect_ratio.den;
+        out->sample_aspect_ratio.den = in->sample_aspect_ratio.num;
     }
 
     for (plane = 0; out->data[plane]; plane++) {
         int hsub = plane == 1 || plane == 2 ? trans->hsub : 0;
         int vsub = plane == 1 || plane == 2 ? trans->vsub : 0;
         int pixstep = trans->pixsteps[plane];
-        int inh  = in->video->h>>vsub;
-        int outw = out->video->w>>hsub;
-        int outh = out->video->h>>vsub;
+        int inh  = in->height  >> vsub;
+        int outw = FF_CEIL_RSHIFT(out->width,  hsub);
+        int outh = FF_CEIL_RSHIFT(out->height, vsub);
         uint8_t *dst, *src;
         int dstlinesize, srclinesize;
         int x, y;
@@ -236,14 +204,45 @@ static int filter_frame(AVFilterLink *inlink, AVFilterBufferRef *in)
                 for (x = 0; x < outw; x++)
                     *((uint32_t *)(dst + 4*x)) = *((uint32_t *)(src + x*srclinesize + y*4));
                 break;
+            case 6:
+                for (x = 0; x < outw; x++) {
+                    int64_t v = AV_RB48(src + x*srclinesize + y*6);
+                    AV_WB48(dst + 6*x, v);
+                }
+                break;
+            case 8:
+                for (x = 0; x < outw; x++)
+                    *((uint64_t *)(dst + 8*x)) = *((uint64_t *)(src + x*srclinesize + y*8));
+                break;
             }
             dst += dstlinesize;
         }
     }
 
-    avfilter_unref_bufferp(&in);
+    av_frame_free(&in);
     return ff_filter_frame(outlink, out);
 }
+
+#define OFFSET(x) offsetof(TransContext, x)
+#define FLAGS AV_OPT_FLAG_FILTERING_PARAM|AV_OPT_FLAG_VIDEO_PARAM
+
+static const AVOption transpose_options[] = {
+    { "dir", "set transpose direction", OFFSET(dir), AV_OPT_TYPE_INT, { .i64 = TRANSPOSE_CCLOCK_FLIP }, 0, 7, FLAGS, "dir" },
+        { "cclock_flip", "rotate counter-clockwise with vertical flip", 0, AV_OPT_TYPE_CONST, { .i64 = TRANSPOSE_CCLOCK_FLIP }, .unit = "dir" },
+        { "clock",       "rotate clockwise",                            0, AV_OPT_TYPE_CONST, { .i64 = TRANSPOSE_CLOCK       }, .unit = "dir" },
+        { "cclock",      "rotate counter-clockwise",                    0, AV_OPT_TYPE_CONST, { .i64 = TRANSPOSE_CCLOCK      }, .unit = "dir" },
+        { "clock_flip",  "rotate clockwise with vertical flip",         0, AV_OPT_TYPE_CONST, { .i64 = TRANSPOSE_CLOCK_FLIP  }, .unit = "dir" },
+
+    { "passthrough", "do not apply transposition if the input matches the specified geometry",
+      OFFSET(passthrough), AV_OPT_TYPE_INT, {.i64=TRANSPOSE_PT_TYPE_NONE},  0, INT_MAX, FLAGS, "passthrough" },
+        { "none",      "always apply transposition",   0, AV_OPT_TYPE_CONST, {.i64=TRANSPOSE_PT_TYPE_NONE},      INT_MIN, INT_MAX, FLAGS, "passthrough" },
+        { "portrait",  "preserve portrait geometry",   0, AV_OPT_TYPE_CONST, {.i64=TRANSPOSE_PT_TYPE_PORTRAIT},  INT_MIN, INT_MAX, FLAGS, "passthrough" },
+        { "landscape", "preserve landscape geometry",  0, AV_OPT_TYPE_CONST, {.i64=TRANSPOSE_PT_TYPE_LANDSCAPE}, INT_MIN, INT_MAX, FLAGS, "passthrough" },
+
+    { NULL },
+};
+
+AVFILTER_DEFINE_CLASS(transpose);
 
 static const AVFilterPad avfilter_vf_transpose_inputs[] = {
     {
@@ -251,7 +250,6 @@ static const AVFilterPad avfilter_vf_transpose_inputs[] = {
         .type        = AVMEDIA_TYPE_VIDEO,
         .get_video_buffer= get_video_buffer,
         .filter_frame = filter_frame,
-        .min_perms   = AV_PERM_READ,
     },
     { NULL }
 };
@@ -269,12 +267,11 @@ AVFilter avfilter_vf_transpose = {
     .name      = "transpose",
     .description = NULL_IF_CONFIG_SMALL("Transpose input video."),
 
-    .init = init,
     .priv_size = sizeof(TransContext),
+    .priv_class = &transpose_class,
 
     .query_formats = query_formats,
 
     .inputs    = avfilter_vf_transpose_inputs,
     .outputs   = avfilter_vf_transpose_outputs,
-    .priv_class = &transpose_class,
 };

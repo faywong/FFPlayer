@@ -64,7 +64,7 @@ static const AVCodecDefault defaults[] = {
     { NULL },
 };
 
-static const AVClass class = {
+static const AVClass vorbis_class = {
     .class_name = "libvorbis",
     .item_name  = av_default_item_name,
     .option     = options,
@@ -187,9 +187,6 @@ static av_cold int oggvorbis_encode_close(AVCodecContext *avctx)
 
     av_fifo_free(s->pkt_fifo);
     ff_af_queue_close(&s->afq);
-#if FF_API_OLD_ENCODE_AUDIO
-    av_freep(&avctx->coded_frame);
-#endif
     av_freep(&avctx->extradata);
 
     return 0;
@@ -267,14 +264,6 @@ static av_cold int oggvorbis_encode_init(AVCodecContext *avctx)
         goto error;
     }
 
-#if FF_API_OLD_ENCODE_AUDIO
-    avctx->coded_frame = avcodec_alloc_frame();
-    if (!avctx->coded_frame) {
-        ret = AVERROR(ENOMEM);
-        goto error;
-    }
-#endif
-
     return 0;
 error:
     oggvorbis_encode_close(avctx);
@@ -348,7 +337,7 @@ static int oggvorbis_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
 
     av_fifo_generic_read(s->pkt_fifo, &op, sizeof(ogg_packet), NULL);
 
-    if ((ret = ff_alloc_packet2(avctx, avpkt, op.bytes)))
+    if ((ret = ff_alloc_packet2(avctx, avpkt, op.bytes)) < 0)
         return ret;
     av_fifo_generic_read(s->pkt_fifo, avpkt->data, op.bytes, NULL);
 
@@ -384,6 +373,6 @@ AVCodec ff_libvorbis_encoder = {
     .sample_fmts    = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_FLTP,
                                                       AV_SAMPLE_FMT_NONE },
     .long_name      = NULL_IF_CONFIG_SMALL("libvorbis"),
-    .priv_class     = &class,
+    .priv_class     = &vorbis_class,
     .defaults       = defaults,
 };

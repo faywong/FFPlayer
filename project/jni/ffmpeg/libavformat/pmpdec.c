@@ -44,11 +44,13 @@ static int pmp_header(AVFormatContext *s)
     PMPContext *pmp = s->priv_data;
     AVIOContext *pb = s->pb;
     int tb_num, tb_den;
-    int index_cnt;
+    uint32_t index_cnt;
     int audio_codec_id = AV_CODEC_ID_NONE;
     int srate, channels;
-    int i;
+    unsigned i;
     uint64_t pos;
+    int64_t fsize = avio_size(pb);
+
     AVStream *vst = avformat_new_stream(s, NULL);
     if (!vst)
         return AVERROR(ENOMEM);
@@ -91,6 +93,26 @@ static int pmp_header(AVFormatContext *s)
     avio_skip(pb, 10);
     srate = avio_rl32(pb);
     channels = avio_rl32(pb) + 1;
+    pos = avio_tell(pb) + 4LL*index_cnt;
+    for (i = 0; i < index_cnt; i++) {
+        uint32_t size = avio_rl32(pb);
+        int flags = size & 1 ? AVINDEX_KEYFRAME : 0;
+        if (url_feof(pb)) {
+            av_log(s, AV_LOG_FATAL, "Encountered EOF while reading index.\n");
+            return AVERROR_INVALIDDATA;
+        }
+        size >>= 1;
+        if (size < 9 + 4*pmp->num_streams) {
+            av_log(s, AV_LOG_ERROR, "Packet too small\n");
+            return AVERROR_INVALIDDATA;
+        }
+        av_add_index_entry(vst, pos, i, size, 0, flags);
+        pos += size;
+        if (fsize > 0 && i == 0 && pos > fsize) {
+            av_log(s, AV_LOG_ERROR, "File ends before first packet\n");
+            return AVERROR_INVALIDDATA;
+        }
+    }
     for (i = 1; i < pmp->num_streams; i++) {
         AVStream *ast = avformat_new_stream(s, NULL);
         if (!ast)
@@ -100,14 +122,6 @@ static int pmp_header(AVFormatContext *s)
         ast->codec->channels = channels;
         ast->codec->sample_rate = srate;
         avpriv_set_pts_info(ast, 32, 1, srate);
-    }
-    pos = avio_tell(pb) + 4*index_cnt;
-    for (i = 0; i < index_cnt; i++) {
-        int size = avio_rl32(pb);
-        int flags = size & 1 ? AVINDEX_KEYFRAME : 0;
-        size >>= 1;
-        av_add_index_entry(vst, pos, i, size, 0, flags);
-        pos += size;
     }
     return 0;
 }
@@ -125,7 +139,7 @@ static int pmp_packet(AVFormatContext *s, AVPacket *pkt)
         int num_packets;
         pmp->audio_packets = avio_r8(pb);
         if (!pmp->audio_packets) {
-            av_log_ask_for_sample(s, "0 audio packets\n");
+            avpriv_request_sample(s, "0 audio packets");
             return AVERROR_PATCHWELCOME;
         }
         num_packets = (pmp->num_streams - 1) * pmp->audio_packets + 1;
@@ -160,7 +174,7 @@ static int pmp_seek(AVFormatContext *s, int stream_index, int64_t ts, int flags)
 {
     PMPContext *pmp = s->priv_data;
     pmp->cur_stream = 0;
-    // fallback to default seek now
+    // fall back on default seek now
     return -1;
 }
 

@@ -88,6 +88,16 @@ static void var_read_metadata(AVFormatContext *avctx, const char *tag, int size)
         av_dict_set(&avctx->metadata, tag, value, AV_DICT_DONT_STRDUP_VAL);
 }
 
+static int set_channels(AVFormatContext *avctx, AVStream *st, int channels) {
+    if (channels <= 0) {
+        av_log(avctx, AV_LOG_ERROR, "Channel count %d invalid\n", channels);
+        return AVERROR_INVALIDDATA;
+    }
+    st->codec->channels = channels;
+    st->codec->channel_layout = (st->codec->channels == 1) ? AV_CH_LAYOUT_MONO : AV_CH_LAYOUT_STEREO;
+    return 0;
+}
+
 /**
  * Parse global variable
  * @return < 0 if unknown
@@ -126,8 +136,7 @@ static int parse_audio_var(AVFormatContext *avctx, AVStream *st, const char *nam
     } else if (!strcmp(name, "DEFAULT_VOL")) {
         var_read_metadata(avctx, name, size);
     } else if (!strcmp(name, "NUM_CHANNELS")) {
-        st->codec->channels = var_read_int(pb, size);
-        st->codec->channel_layout = (st->codec->channels == 1) ? AV_CH_LAYOUT_MONO : AV_CH_LAYOUT_STEREO;
+        return set_channels(avctx, st, var_read_int(pb, size));
     } else if (!strcmp(name, "SAMPLE_RATE")) {
         st->codec->sample_rate = var_read_int(pb, size);
         avpriv_set_pts_info(st, 33, 1, st->codec->sample_rate);
@@ -149,6 +158,8 @@ static int parse_video_var(AVFormatContext *avctx, AVStream *st, const char *nam
         st->nb_frames = st->duration = var_read_int(pb, size);
     } else if (!strcmp(name, "COMPRESSION")) {
         char * str = var_read_string(pb, size);
+        if (!str)
+            return AVERROR_INVALIDDATA;
         if (!strcmp(str, "1")) {
             st->codec->codec_id = AV_CODEC_ID_MVC1;
         } else if (!strcmp(str, "2")) {
@@ -161,11 +172,12 @@ static int parse_video_var(AVFormatContext *avctx, AVStream *st, const char *nam
         } else if (!strcmp(str, "MVC2")) {
             st->codec->codec_id = AV_CODEC_ID_MVC2;
         } else {
-            av_log_ask_for_sample(avctx, "unknown video compression %s\n", str);
+            avpriv_request_sample(avctx, "video compression %s", str);
         }
         av_free(str);
     } else if (!strcmp(name, "FPS")) {
-        st->time_base = av_inv_q(var_read_float(pb, size));
+        AVRational fps = var_read_float(pb, size);
+        avpriv_set_pts_info(st, 64, fps.den, fps.num);
     } else if (!strcmp(name, "HEIGHT")) {
         st->codec->height = var_read_int(pb, size);
     } else if (!strcmp(name, "PIXEL_ASPECT")) {
@@ -202,7 +214,7 @@ static void read_table(AVFormatContext *avctx, AVStream *st, int (*parse)(AVForm
         name[sizeof(name) - 1] = 0;
         size = avio_rb32(pb);
         if (parse(avctx, st, name, size) < 0) {
-            av_log_ask_for_sample(avctx, "unknown variable %s\n", name);
+            avpriv_request_sample(avctx, "variable %s", name);
             avio_skip(pb, size);
         }
     }
@@ -250,7 +262,7 @@ static int mv_read_header(AVFormatContext *avctx)
         if (!vst)
             return AVERROR(ENOMEM);
         vst->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-        vst->time_base = (AVRational){1, 15};
+        avpriv_set_pts_info(vst, 64, 1, 15);
         vst->nb_frames = avio_rb32(pb);
         v = avio_rb32(pb);
         switch (v) {
@@ -262,7 +274,7 @@ static int mv_read_header(AVFormatContext *avctx)
             vst->codec->codec_id = AV_CODEC_ID_RAWVIDEO;
             break;
         default:
-            av_log_ask_for_sample(avctx, "unknown video compression %i\n", v);
+            avpriv_request_sample(avctx, "video compression %i", v);
             break;
         }
         vst->codec->codec_tag = 0;
@@ -274,13 +286,14 @@ static int mv_read_header(AVFormatContext *avctx)
         ast->nb_frames             = vst->nb_frames;
         ast->codec->sample_rate    = avio_rb32(pb);
         avpriv_set_pts_info(ast, 33, 1, ast->codec->sample_rate);
-        ast->codec->channels       = avio_rb32(pb);
-        ast->codec->channel_layout = (ast->codec->channels == 1) ? AV_CH_LAYOUT_MONO : AV_CH_LAYOUT_STEREO;
+        if (set_channels(avctx, ast, avio_rb32(pb)) < 0)
+            return AVERROR_INVALIDDATA;
+
         v = avio_rb32(pb);
         if (v == AUDIO_FORMAT_SIGNED) {
             ast->codec->codec_id = AV_CODEC_ID_PCM_S16BE;
         } else {
-            av_log_ask_for_sample(avctx, "unknown audio compression (format %i)\n", v);
+            avpriv_request_sample(avctx, "audio compression (format %i)", v);
         }
 
         avio_skip(pb, 12);
@@ -304,7 +317,7 @@ static int mv_read_header(AVFormatContext *avctx)
         read_table(avctx, NULL, parse_global_var);
 
         if (mv->nb_audio_tracks > 1) {
-            av_log_ask_for_sample(avctx, "multiple audio streams\n");
+            avpriv_request_sample(avctx, "multiple audio streams support");
             return AVERROR_PATCHWELCOME;
         } else if (mv->nb_audio_tracks) {
             ast = avformat_new_stream(avctx, NULL);
@@ -316,15 +329,19 @@ static int mv_read_header(AVFormatContext *avctx)
             if (ast->codec->codec_tag == 100 && ast->codec->codec_id == AUDIO_FORMAT_SIGNED && ast->codec->bits_per_coded_sample == 16) {
                 ast->codec->codec_id = AV_CODEC_ID_PCM_S16BE;
             } else {
-                av_log_ask_for_sample(avctx, "unknown audio compression %i (format %i, width %i)\n",
+                avpriv_request_sample(avctx, "audio compression %i (format %i, width %i)",
                     ast->codec->codec_tag, ast->codec->codec_id, ast->codec->bits_per_coded_sample);
                 ast->codec->codec_id = AV_CODEC_ID_NONE;
             }
             ast->codec->codec_tag = 0;
+            if (ast->codec->channels <= 0) {
+                av_log(avctx, AV_LOG_ERROR, "No valid channel count found\n");
+                return AVERROR_INVALIDDATA;
+            }
         }
 
         if (mv->nb_video_tracks > 1) {
-            av_log_ask_for_sample(avctx, "multiple video streams\n");
+            avpriv_request_sample(avctx, "multiple video streams support");
             return AVERROR_PATCHWELCOME;
         } else if (mv->nb_video_tracks) {
             vst = avformat_new_stream(avctx, NULL);
@@ -340,7 +357,7 @@ static int mv_read_header(AVFormatContext *avctx)
         if (mv->nb_video_tracks)
             read_index(pb, vst);
     } else {
-        av_log_ask_for_sample(avctx, "unknown version %i\n", version);
+        avpriv_request_sample(avctx, "version %i", version);
         return AVERROR_PATCHWELCOME;
     }
 
@@ -357,7 +374,7 @@ static int mv_read_packet(AVFormatContext *avctx, AVPacket *pkt)
     int ret;
     uint64_t pos;
 
-    if (frame  < st->nb_frames) {
+    if (frame  < st->nb_index_entries) {
         index = &st->index_entries[frame];
         pos = avio_tell(pb);
         if (index->pos > pos)

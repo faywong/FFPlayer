@@ -36,9 +36,9 @@
  */
 
 #include "libavutil/avassert.h"
+#include "libavutil/internal.h"
 #include "libavutil/pixdesc.h"
 #include "avcodec.h"
-#include "dsputil.h"
 #include "internal.h"
 #include "get_bits.h"
 #include "put_bits.h"
@@ -49,7 +49,7 @@ typedef struct BlockInfo {
     const uint32_t *factor_table;
     const uint8_t *scan_table;
     uint8_t pos; /* position in block */
-    void (*idct_put)(uint8_t *dest, int line_size, DCTELEM *block);
+    void (*idct_put)(uint8_t *dest, int line_size, int16_t *block);
     uint8_t partial_bit_count;
     uint32_t partial_bit_buffer;
     int shift_offset;
@@ -58,7 +58,7 @@ typedef struct BlockInfo {
 static const int dv_iweight_bits = 14;
 
 /* decode AC coefficients */
-static void dv_decode_ac(GetBitContext *gb, BlockInfo *mb, DCTELEM *block)
+static void dv_decode_ac(GetBitContext *gb, BlockInfo *mb, int16_t *block)
 {
     int last_index = gb->size_in_bits;
     const uint8_t  *scan_table   = mb->scan_table;
@@ -136,14 +136,14 @@ static int dv_decode_video_segment(AVCodecContext *avctx, void *arg)
     int quant, dc, dct_mode, class1, j;
     int mb_index, mb_x, mb_y, last_index;
     int y_stride, linesize;
-    DCTELEM *block, *block1;
+    int16_t *block, *block1;
     int c_offset;
     uint8_t *y_ptr;
     const uint8_t *buf_ptr;
     PutBitContext pb, vs_pb;
     GetBitContext gb;
     BlockInfo mb_data[5 * DV_MAX_BPM], *mb, *mb1;
-    LOCAL_ALIGNED_16(DCTELEM, sblock, [5*DV_MAX_BPM], [64]);
+    LOCAL_ALIGNED_16(int16_t, sblock, [5*DV_MAX_BPM], [64]);
     LOCAL_ALIGNED_16(uint8_t, mb_bit_buffer, [  80 + FF_INPUT_BUFFER_PADDING_SIZE]); /* allow some slack */
     LOCAL_ALIGNED_16(uint8_t, vs_bit_buffer, [5*80 + FF_INPUT_BUFFER_PADDING_SIZE]); /* allow some slack */
     const int log2_blocksize = 3-s->avctx->lowres;
@@ -287,9 +287,9 @@ static int dv_decode_video_segment(AVCodecContext *avctx, void *arg)
                   int x, y;
                   mb->idct_put(pixels, 8, block);
                   for (y = 0; y < (1 << log2_blocksize); y++, c_ptr += s->picture.linesize[j], pixels += 8) {
-                      ptr1   = pixels + (1 << (log2_blocksize - 1));
+                      ptr1   = pixels + ((1 << (log2_blocksize))>>1);
                       c_ptr1 = c_ptr + (s->picture.linesize[j] << log2_blocksize);
-                      for (x = 0; x < (1 << (log2_blocksize - 1)); x++) {
+                      for (x = 0; x < (1 << FFMAX(log2_blocksize - 1, 0)); x++) {
                           c_ptr[x]  = pixels[x];
                           c_ptr1[x] = ptr1[x];
                       }
@@ -319,7 +319,7 @@ static int dvvideo_decode_frame(AVCodecContext *avctx,
     int buf_size = avpkt->size;
     DVVideoContext *s = avctx->priv_data;
     const uint8_t* vsc_pack;
-    int apt, is16_9;
+    int ret, apt, is16_9;
 
     s->sys = avpriv_dv_frame_profile2(avctx, s->sys, buf, buf_size);
     if (!s->sys || buf_size < s->sys->frame_size || ff_dv_init_dynamic_tables(s->sys)) {
@@ -327,20 +327,13 @@ static int dvvideo_decode_frame(AVCodecContext *avctx,
         return -1; /* NOTE: we only accept several full frames */
     }
 
-    if (s->picture.data[0])
-        avctx->release_buffer(avctx, &s->picture);
-
-    avcodec_get_frame_defaults(&s->picture);
-    s->picture.reference = 0;
     s->picture.key_frame = 1;
     s->picture.pict_type = AV_PICTURE_TYPE_I;
     avctx->pix_fmt   = s->sys->pix_fmt;
     avctx->time_base = s->sys->time_base;
     avcodec_set_dimensions(avctx, s->sys->width, s->sys->height);
-    if (ff_get_buffer(avctx, &s->picture) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
-        return -1;
-    }
+    if ((ret = ff_get_buffer(avctx, &s->picture, 0)) < 0)
+        return ret;
     s->picture.interlaced_frame = 1;
     s->picture.top_field_first  = 0;
 
@@ -361,7 +354,7 @@ static int dvvideo_decode_frame(AVCodecContext *avctx,
 
     /* return image */
     *got_frame = 1;
-    *(AVFrame*)data = s->picture;
+    av_frame_move_ref(data, &s->picture);
 
     return s->sys->frame_size;
 }
@@ -370,8 +363,7 @@ static int dvvideo_close(AVCodecContext *c)
 {
     DVVideoContext *s = c->priv_data;
 
-    if (s->picture.data[0])
-        c->release_buffer(c, &s->picture);
+    av_frame_unref(&s->picture);
 
     return 0;
 }

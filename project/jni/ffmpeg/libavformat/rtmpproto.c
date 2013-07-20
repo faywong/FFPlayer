@@ -1,6 +1,6 @@
 /*
  * RTMP network protocol
- * Copyright (c) 2009 Kostya Shishkov
+ * Copyright (c) 2009 Konstantin Shishkov
  *
  * This file is part of FFmpeg.
  *
@@ -48,9 +48,7 @@
 #include <zlib.h>
 #endif
 
-//#define DEBUG
-
-#define APP_MAX_LENGTH 128
+#define APP_MAX_LENGTH 1024
 #define PLAYPATH_MAX_LENGTH 256
 #define TCURL_MAX_LENGTH 512
 #define FLASHVER_MAX_LENGTH 64
@@ -312,7 +310,7 @@ static int gen_connect(URLContext *s, RTMPContext *rt)
     int ret;
 
     if ((ret = ff_rtmp_packet_create(&pkt, RTMP_SYSTEM_CHANNEL, RTMP_PT_INVOKE,
-                                     0, 4096)) < 0)
+                                     0, 4096 + APP_MAX_LENGTH)) < 0)
         return ret;
 
     p = pkt.data;
@@ -1690,7 +1688,7 @@ static int handle_connect_error(URLContext *s, const char *desc)
     }
 
     if (!strcmp(authmod, "adobe")) {
-        if ((ret = do_adobe_auth(rt, user, salt, challenge, opaque)) < 0)
+        if ((ret = do_adobe_auth(rt, user, salt, opaque, challenge)) < 0)
             return ret;
     } else {
         if ((ret = do_llnw_auth(rt, user, nonce)) < 0)
@@ -2367,16 +2365,20 @@ reconnect:
             fname = strchr(p + 1, '/');
             if (!fname || (c && c < fname)) {
                 fname = p + 1;
-                av_strlcpy(rt->app, path + 1, p - path);
+                av_strlcpy(rt->app, path + 1, FFMIN(p - path, APP_MAX_LENGTH));
             } else {
                 fname++;
-                av_strlcpy(rt->app, path + 1, fname - path - 1);
+                av_strlcpy(rt->app, path + 1, FFMIN(fname - path - 1, APP_MAX_LENGTH));
             }
         }
     }
 
     if (old_app) {
         // The name of application has been defined by the user, override it.
+        if (strlen(old_app) >= APP_MAX_LENGTH) {
+            ret = AVERROR(EINVAL);
+            goto fail;
+        }
         av_free(rt->app);
         rt->app = old_app;
     }

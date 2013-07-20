@@ -134,7 +134,7 @@ static av_cold int mpc8_decode_init(AVCodecContext * avctx)
     }
     channels = get_bits(&gb, 4) + 1;
     if (channels > 2) {
-        av_log_missing_feature(avctx, "Multichannel MPC SV8", 1);
+        avpriv_request_sample(avctx, "Multichannel MPC SV8");
         return AVERROR_PATCHWELCOME;
     }
     c->MSS = get_bits1(&gb);
@@ -143,9 +143,6 @@ static av_cold int mpc8_decode_init(AVCodecContext * avctx)
     avctx->sample_fmt = AV_SAMPLE_FMT_S16P;
     avctx->channel_layout = (channels==2) ? AV_CH_LAYOUT_STEREO : AV_CH_LAYOUT_MONO;
     avctx->channels = channels;
-
-    avcodec_get_frame_defaults(&c->frame);
-    avctx->coded_frame = &c->frame;
 
     if(vlc_initialized) return 0;
     av_log(avctx, AV_LOG_DEBUG, "Initing VLC\n");
@@ -244,6 +241,7 @@ static av_cold int mpc8_decode_init(AVCodecContext * avctx)
 static int mpc8_decode_frame(AVCodecContext * avctx, void *data,
                              int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     MPCContext *c = avctx->priv_data;
@@ -255,11 +253,9 @@ static int mpc8_decode_frame(AVCodecContext * avctx, void *data,
     int last[2];
 
     /* get output buffer */
-    c->frame.nb_samples = MPC_FRAME_SIZE;
-    if ((res = ff_get_buffer(avctx, &c->frame)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+    frame->nb_samples = MPC_FRAME_SIZE;
+    if ((res = ff_get_buffer(avctx, frame, 0)) < 0)
         return res;
-    }
 
     keyframe = c->cur_frame == 0;
 
@@ -415,7 +411,7 @@ static int mpc8_decode_frame(AVCodecContext * avctx, void *data,
     }
 
     ff_mpc_dequantize_and_synth(c, maxband - 1,
-                                (int16_t **)c->frame.extended_data,
+                                (int16_t **)frame->extended_data,
                                 avctx->channels);
 
     c->cur_frame++;
@@ -426,8 +422,7 @@ static int mpc8_decode_frame(AVCodecContext * avctx, void *data,
     if(c->cur_frame >= c->frames)
         c->cur_frame = 0;
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = c->frame;
+    *got_frame_ptr = 1;
 
     return c->cur_frame ? c->last_bits_used >> 3 : buf_size;
 }

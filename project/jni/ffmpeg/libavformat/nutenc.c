@@ -335,7 +335,7 @@ static void write_mainheader(NUTContext *nut, AVIOContext *bc)
         tmp_head_idx;
     int64_t tmp_match;
 
-    ff_put_v(bc, 3); /* version */
+    ff_put_v(bc, NUT_VERSION);
     ff_put_v(bc, nut->avf->nb_streams);
     ff_put_v(bc, nut->max_distance);
     ff_put_v(bc, nut->time_base_count);
@@ -990,7 +990,7 @@ static int nut_write_trailer(AVFormatContext *s)
         write_headers(s, bc);
 
     ret = avio_open_dyn_buf(&dyn_bc);
-    if (ret >= 0) {
+    if (ret >= 0 && nut->sp_count) {
         write_index(nut, dyn_bc);
         put_packet(nut, bc, dyn_bc, 1, INDEX_STARTCODE);
     }

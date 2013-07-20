@@ -20,10 +20,10 @@
  */
 
 #include "libavutil/intreadwrite.h"
-#include "libavcodec/dsputil.h"
 #include "libavcodec/paf.h"
 #include "bytestream.h"
 #include "avcodec.h"
+#include "copy_block.h"
 #include "internal.h"
 
 
@@ -48,7 +48,7 @@ static const uint8_t block_sequences[16][8] =
 };
 
 typedef struct PAFVideoDecContext {
-    AVFrame  pic;
+    AVFrame  *pic;
     GetByteContext gb;
 
     int     current_frame;
@@ -58,6 +58,19 @@ typedef struct PAFVideoDecContext {
 
     uint8_t *opcodes;
 } PAFVideoDecContext;
+
+static av_cold int paf_vid_close(AVCodecContext *avctx)
+{
+    PAFVideoDecContext *c = avctx->priv_data;
+    int i;
+
+    av_frame_free(&c->pic);
+
+    for (i = 0; i < 4; i++)
+        av_freep(&c->frame[i]);
+
+    return 0;
+}
 
 static av_cold int paf_vid_init(AVCodecContext *avctx)
 {
@@ -71,13 +84,18 @@ static av_cold int paf_vid_init(AVCodecContext *avctx)
 
     avctx->pix_fmt = AV_PIX_FMT_PAL8;
 
-    avcodec_get_frame_defaults(&c->pic);
+    c->pic = av_frame_alloc();
+    if (!c->pic)
+        return AVERROR(ENOMEM);
+
     c->frame_size = FFALIGN(avctx->height, 256) * avctx->width;
     c->video_size = avctx->height * avctx->width;
     for (i = 0; i < 4; i++) {
         c->frame[i] = av_mallocz(c->frame_size);
-        if (!c->frame[i])
+        if (!c->frame[i]) {
+            paf_vid_close(avctx);
             return AVERROR(ENOMEM);
+        }
     }
 
     return 0;
@@ -251,8 +269,7 @@ static int paf_vid_decode(AVCodecContext *avctx, void *data,
     uint8_t code, *dst, *src, *end;
     int i, frame, ret;
 
-    c->pic.reference = 3;
-    if ((ret = avctx->reget_buffer(avctx, &c->pic)) < 0)
+    if ((ret = ff_reget_buffer(avctx, c->pic)) < 0)
         return ret;
 
     bytestream2_init(&c->gb, pkt->data, pkt->size);
@@ -262,17 +279,17 @@ static int paf_vid_decode(AVCodecContext *avctx, void *data,
         for (i = 0; i < 4; i++)
             memset(c->frame[i], 0, c->frame_size);
 
-        memset(c->pic.data[1], 0, AVPALETTE_SIZE);
+        memset(c->pic->data[1], 0, AVPALETTE_SIZE);
         c->current_frame = 0;
-        c->pic.key_frame = 1;
-        c->pic.pict_type = AV_PICTURE_TYPE_I;
+        c->pic->key_frame = 1;
+        c->pic->pict_type = AV_PICTURE_TYPE_I;
     } else {
-        c->pic.key_frame = 0;
-        c->pic.pict_type = AV_PICTURE_TYPE_P;
+        c->pic->key_frame = 0;
+        c->pic->pict_type = AV_PICTURE_TYPE_P;
     }
 
     if (code & 0x40) {
-        uint32_t *out = (uint32_t *)c->pic.data[1];
+        uint32_t *out = (uint32_t *)c->pic->data[1];
         int index, count;
 
         index = bytestream2_get_byte(&c->gb);
@@ -295,7 +312,7 @@ static int paf_vid_decode(AVCodecContext *avctx, void *data,
             b = b << 2 | b >> 4;
             *out++ = 0xFFU << 24 | r << 16 | g << 8 | b;
         }
-        c->pic.palette_has_changed = 1;
+        c->pic->palette_has_changed = 1;
     }
 
     switch (code & 0x0F) {
@@ -343,56 +360,35 @@ static int paf_vid_decode(AVCodecContext *avctx, void *data,
         }
         break;
     default:
-        av_log_ask_for_sample(avctx, "unknown/invalid code\n");
+        avpriv_request_sample(avctx, "unknown/invalid code");
         return AVERROR_INVALIDDATA;
     }
 
-    dst = c->pic.data[0];
+    dst = c->pic->data[0];
     src = c->frame[c->current_frame];
     for (i = 0; i < avctx->height; i++) {
         memcpy(dst, src, avctx->width);
-        dst += c->pic.linesize[0];
+        dst += c->pic->linesize[0];
         src += avctx->width;
     }
 
     c->current_frame = (c->current_frame + 1) & 3;
+    if ((ret = av_frame_ref(data, c->pic)) < 0)
+        return ret;
 
     *got_frame       = 1;
-    *(AVFrame *)data = c->pic;
 
     return pkt->size;
 }
 
-static av_cold int paf_vid_close(AVCodecContext *avctx)
-{
-    PAFVideoDecContext *c = avctx->priv_data;
-    int i;
-
-    if (c->pic.data[0])
-        avctx->release_buffer(avctx, &c->pic);
-
-    for (i = 0; i < 4; i++)
-        av_freep(&c->frame[i]);
-
-    return 0;
-}
-
-typedef struct PAFAudioDecContext {
-    AVFrame frame;
-} PAFAudioDecContext;
-
 static av_cold int paf_aud_init(AVCodecContext *avctx)
 {
-    PAFAudioDecContext *c = avctx->priv_data;
-
     if (avctx->channels != 2) {
         av_log(avctx, AV_LOG_ERROR, "invalid number of channels\n");
         return AVERROR_INVALIDDATA;
     }
 
-    avcodec_get_frame_defaults(&c->frame);
     avctx->channel_layout = AV_CH_LAYOUT_STEREO;
-    avctx->coded_frame    = &c->frame;
     avctx->sample_fmt     = AV_SAMPLE_FMT_S16;
 
     return 0;
@@ -401,7 +397,7 @@ static av_cold int paf_aud_init(AVCodecContext *avctx)
 static int paf_aud_decode(AVCodecContext *avctx, void *data,
                           int *got_frame_ptr, AVPacket *pkt)
 {
-    PAFAudioDecContext *c = avctx->priv_data;
+    AVFrame *frame = data;
     uint8_t *buf = pkt->data;
     int16_t *output_samples;
     const uint8_t *t;
@@ -411,11 +407,11 @@ static int paf_aud_decode(AVCodecContext *avctx, void *data,
     if (frames < 1)
         return AVERROR_INVALIDDATA;
 
-    c->frame.nb_samples = PAF_SOUND_SAMPLES * frames;
-    if ((ret = ff_get_buffer(avctx, &c->frame)) < 0)
+    frame->nb_samples = PAF_SOUND_SAMPLES * frames;
+    if ((ret = ff_get_buffer(avctx, frame, 0)) < 0)
         return ret;
 
-    output_samples = (int16_t *)c->frame.data[0];
+    output_samples = (int16_t *)frame->data[0];
     for (i = 0; i < frames; i++) {
         t = buf + 256 * sizeof(uint16_t);
         for (j = 0; j < PAF_SOUND_SAMPLES; j++) {
@@ -428,7 +424,6 @@ static int paf_aud_decode(AVCodecContext *avctx, void *data,
     }
 
     *got_frame_ptr   = 1;
-    *(AVFrame *)data = c->frame;
 
     return pkt->size;
 }
@@ -449,7 +444,6 @@ AVCodec ff_paf_audio_decoder = {
     .name           = "paf_audio",
     .type           = AVMEDIA_TYPE_AUDIO,
     .id             = AV_CODEC_ID_PAF_AUDIO,
-    .priv_data_size = sizeof(PAFAudioDecContext),
     .init           = paf_aud_init,
     .decode         = paf_aud_decode,
     .capabilities   = CODEC_CAP_DR1,

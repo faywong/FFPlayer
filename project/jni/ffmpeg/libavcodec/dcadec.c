@@ -29,19 +29,17 @@
 #include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "libavutil/float_dsp.h"
-#include "libavutil/intmath.h"
+#include "libavutil/internal.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/samplefmt.h"
 #include "avcodec.h"
-#include "dsputil.h"
 #include "fft.h"
 #include "get_bits.h"
-#include "put_bits.h"
 #include "dcadata.h"
 #include "dcahuff.h"
 #include "dca.h"
-#include "dca_parser.h"
+#include "mathops.h"
 #include "synth_filter.h"
 #include "dcadsp.h"
 #include "fmtconvert.h"
@@ -349,7 +347,6 @@ static av_always_inline int get_bitalloc(GetBitContext *gb, BitAlloc *ba,
 
 typedef struct {
     AVCodecContext *avctx;
-    AVFrame frame;
     /* Frame header */
     int frame_type;             ///< type of the current frame
     int samples_deficit;        ///< deficit sample count
@@ -740,7 +737,7 @@ static int dca_parse_frame_header(DCAContext *s)
 
     if (s->lfe == 3) {
         s->lfe = 0;
-        av_log_ask_for_sample(s->avctx, "LFE is 3\n");
+        avpriv_request_sample(s->avctx, "LFE = 3");
         return AVERROR_PATCHWELCOME;
     }
 
@@ -1013,7 +1010,7 @@ static int dca_subframe_header(DCAContext *s, int base_channel, int block_index)
         /* Scale factor index */
         quant7 = get_bits(&s->gb, 8);
         if (quant7 > 127) {
-            av_log_ask_for_sample(s->avctx, "LFEScaleIndex larger than 127\n");
+            avpriv_request_sample(s->avctx, "LFEScaleIndex larger than 127");
             return AVERROR_INVALIDDATA;
         }
         s->lfe_scale_factor = scale_factor_quant7[quant7];
@@ -1260,7 +1257,7 @@ static void dca_downmix(float **samples, int srcfmt,
 #ifndef decode_blockcodes
 /* Very compact version of the block code decoder that does not use table
  * look-up but is slightly slower */
-static int decode_blockcode(int code, int levels, int *values)
+static int decode_blockcode(int code, int levels, int32_t *values)
 {
     int i;
     int offset = (levels - 1) >> 1;
@@ -1274,7 +1271,7 @@ static int decode_blockcode(int code, int levels, int *values)
     return code;
 }
 
-static int decode_blockcodes(int code1, int code2, int levels, int *values)
+static int decode_blockcodes(int code1, int code2, int levels, int32_t *values)
 {
     return decode_blockcode(code1, levels, values) |
            decode_blockcode(code2, levels, values + 4);
@@ -1303,7 +1300,7 @@ static int dca_subsubframe(DCAContext *s, int base_channel, int block_index)
 
     /* FIXME */
     float (*subband_samples)[DCA_SUBBANDS][8] = s->subband_samples[block_index];
-    LOCAL_ALIGNED_16(int, block, [8]);
+    LOCAL_ALIGNED_16(int32_t, block, [8]);
 
     /*
      * Audio data
@@ -1986,14 +1983,15 @@ static void dca_exss_parse_header(DCAContext *s)
 
         num_audiop = get_bits(&s->gb, 3) + 1;
         if (num_audiop > 1) {
-            av_log_ask_for_sample(s->avctx, "Multiple DTS-HD audio presentations.");
+            avpriv_request_sample(s->avctx,
+                                  "Multiple DTS-HD audio presentations");
             /* ignore such streams for now */
             return;
         }
 
         num_assets = get_bits(&s->gb, 3) + 1;
         if (num_assets > 1) {
-            av_log_ask_for_sample(s->avctx, "Multiple DTS-HD audio assets.");
+            avpriv_request_sample(s->avctx, "Multiple DTS-HD audio assets");
             /* ignore such streams for now */
             return;
         }
@@ -2067,6 +2065,7 @@ static void dca_exss_parse_header(DCAContext *s)
 static int dca_decode_frame(AVCodecContext *avctx, void *data,
                             int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     int channel_mask;
@@ -2166,7 +2165,7 @@ static int dca_decode_frame(AVCodecContext *avctx, void *data,
                 }
 
                 if (s->xch_base_channel < 2) {
-                    av_log_ask_for_sample(avctx, "XCh with fewer than 2 base channels is not supported\n");
+                    avpriv_request_sample(avctx, "XCh with fewer than 2 base channels");
                     continue;
                 }
 
@@ -2354,17 +2353,15 @@ static int dca_decode_frame(AVCodecContext *avctx, void *data,
     }
 
     /* get output buffer */
-    s->frame.nb_samples = 256 * (s->sample_blocks / 8);
-    if ((ret = ff_get_buffer(avctx, &s->frame)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+    frame->nb_samples = 256 * (s->sample_blocks / 8);
+    if ((ret = ff_get_buffer(avctx, frame, 0)) < 0)
         return ret;
-    }
-    samples_flt = (float  **) s->frame.extended_data;
+    samples_flt = (float **)frame->extended_data;
 
     /* allocate buffer for extra channels if downmixing */
     if (avctx->channels < full_channels) {
         ret = av_samples_get_buffer_size(NULL, full_channels - channels,
-                                         s->frame.nb_samples,
+                                         frame->nb_samples,
                                          avctx->sample_fmt, 0);
         if (ret < 0)
             return ret;
@@ -2377,7 +2374,7 @@ static int dca_decode_frame(AVCodecContext *avctx, void *data,
         ret = av_samples_fill_arrays((uint8_t **)s->extra_channels, NULL,
                                      s->extra_channels_buffer,
                                      full_channels - channels,
-                                     s->frame.nb_samples, avctx->sample_fmt, 0);
+                                     frame->nb_samples, avctx->sample_fmt, 0);
         if (ret < 0)
             return ret;
     }
@@ -2456,8 +2453,7 @@ static int dca_decode_frame(AVCodecContext *avctx, void *data,
     for (i = 0; i < 2 * s->lfe * 4; i++)
         s->lfe_data[i] = s->lfe_data[i + lfe_samples];
 
-    *got_frame_ptr    = 1;
-    *(AVFrame *) data = s->frame;
+    *got_frame_ptr = 1;
 
     return buf_size;
 }
@@ -2490,9 +2486,6 @@ static av_cold int dca_decode_init(AVCodecContext *avctx)
         avctx->request_channels == 2) {
         avctx->channels = avctx->request_channels;
     }
-
-    avcodec_get_frame_defaults(&s->frame);
-    avctx->coded_frame = &s->frame;
 
     return 0;
 }

@@ -94,7 +94,6 @@
 typedef struct VqaContext {
 
     AVCodecContext *avctx;
-    AVFrame frame;
     GetByteContext gb;
 
     uint32_t palette[PALETTE_COUNT];
@@ -122,7 +121,7 @@ typedef struct VqaContext {
 static av_cold int vqa_decode_init(AVCodecContext *avctx)
 {
     VqaContext *s = avctx->priv_data;
-    int i, j, codebook_index;
+    int i, j, codebook_index, ret;
 
     s->avctx = avctx;
     avctx->pix_fmt = AV_PIX_FMT_PAL8;
@@ -130,20 +129,27 @@ static av_cold int vqa_decode_init(AVCodecContext *avctx)
     /* make sure the extradata made it */
     if (s->avctx->extradata_size != VQA_HEADER_SIZE) {
         av_log(s->avctx, AV_LOG_ERROR, "expected extradata size of %d\n", VQA_HEADER_SIZE);
-        return AVERROR_INVALIDDATA;
+        return AVERROR(EINVAL);
     }
 
     /* load up the VQA parameters from the header */
     s->vqa_version = s->avctx->extradata[0];
-    if (s->vqa_version < 1 || s->vqa_version > 3) {
-        av_log(s->avctx, AV_LOG_ERROR, "unsupported version %d\n", s->vqa_version);
+    switch (s->vqa_version) {
+    case 1:
+    case 2:
+        break;
+    case 3:
+        avpriv_report_missing_feature(avctx, "VQA Version %d", s->vqa_version);
+        return AVERROR_PATCHWELCOME;
+    default:
+        avpriv_request_sample(avctx, "VQA Version %i", s->vqa_version);
         return AVERROR_PATCHWELCOME;
     }
     s->width = AV_RL16(&s->avctx->extradata[6]);
     s->height = AV_RL16(&s->avctx->extradata[8]);
-    if(av_image_check_size(s->width, s->height, 0, avctx)){
+    if ((ret = av_image_check_size(s->width, s->height, 0, avctx)) < 0) {
         s->width= s->height= 0;
-        return AVERROR_INVALIDDATA;
+        return ret;
     }
     s->vector_width = s->avctx->extradata[10];
     s->vector_height = s->avctx->extradata[11];
@@ -190,9 +196,6 @@ static av_cold int vqa_decode_init(AVCodecContext *avctx)
                 s->codebook[codebook_index++] = i;
     }
     s->next_codebook_buffer_index = 0;
-
-    avcodec_get_frame_defaults(&s->frame);
-    s->frame.data[0] = NULL;
 
     return 0;
 fail:
@@ -307,7 +310,7 @@ static int decode_format80(VqaContext *s, int src_size,
     return 0; // let's display what we decoded anyway
 }
 
-static int vqa_decode_chunk(VqaContext *s)
+static int vqa_decode_chunk(VqaContext *s, AVFrame *frame)
 {
     unsigned int chunk_type;
     unsigned int chunk_size;
@@ -476,7 +479,7 @@ static int vqa_decode_chunk(VqaContext *s)
         index_shift = 3;
     for (y = 0; y < s->height; y += s->vector_height) {
         for (x = 0; x < s->width; x += 4, lobytes++, hibytes++) {
-            pixel_ptr = y * s->frame.linesize[0] + x;
+            pixel_ptr = y * frame->linesize[0] + x;
 
             /* get the vector index, the method for which varies according to
              * VQA file version */
@@ -491,11 +494,11 @@ static int vqa_decode_chunk(VqaContext *s)
                 /* uniform color fill - a quick hack */
                 if (hibyte == 0xFF) {
                     while (lines--) {
-                        s->frame.data[0][pixel_ptr + 0] = 255 - lobyte;
-                        s->frame.data[0][pixel_ptr + 1] = 255 - lobyte;
-                        s->frame.data[0][pixel_ptr + 2] = 255 - lobyte;
-                        s->frame.data[0][pixel_ptr + 3] = 255 - lobyte;
-                        pixel_ptr += s->frame.linesize[0];
+                        frame->data[0][pixel_ptr + 0] = 255 - lobyte;
+                        frame->data[0][pixel_ptr + 1] = 255 - lobyte;
+                        frame->data[0][pixel_ptr + 2] = 255 - lobyte;
+                        frame->data[0][pixel_ptr + 3] = 255 - lobyte;
+                        pixel_ptr += frame->linesize[0];
                     }
                     lines=0;
                 }
@@ -516,11 +519,11 @@ static int vqa_decode_chunk(VqaContext *s)
             }
 
             while (lines--) {
-                s->frame.data[0][pixel_ptr + 0] = s->codebook[vector_index++];
-                s->frame.data[0][pixel_ptr + 1] = s->codebook[vector_index++];
-                s->frame.data[0][pixel_ptr + 2] = s->codebook[vector_index++];
-                s->frame.data[0][pixel_ptr + 3] = s->codebook[vector_index++];
-                pixel_ptr += s->frame.linesize[0];
+                frame->data[0][pixel_ptr + 0] = s->codebook[vector_index++];
+                frame->data[0][pixel_ptr + 1] = s->codebook[vector_index++];
+                frame->data[0][pixel_ptr + 2] = s->codebook[vector_index++];
+                frame->data[0][pixel_ptr + 3] = s->codebook[vector_index++];
+                pixel_ptr += frame->linesize[0];
             }
         }
     }
@@ -538,7 +541,8 @@ static int vqa_decode_chunk(VqaContext *s)
         chunk_size = bytestream2_get_be32(&s->gb);
 
         if (chunk_size > MAX_CODEBOOK_SIZE - s->next_codebook_buffer_index) {
-            av_log(s->avctx, AV_LOG_ERROR, "cbp0 chunk too large (0x%X bytes)\n", chunk_size);
+            av_log(s->avctx, AV_LOG_ERROR, "cbp0 chunk too large (%u bytes)\n",
+                   chunk_size);
             return AVERROR_INVALIDDATA;
         }
 
@@ -566,7 +570,8 @@ static int vqa_decode_chunk(VqaContext *s)
         chunk_size = bytestream2_get_be32(&s->gb);
 
         if (chunk_size > MAX_CODEBOOK_SIZE - s->next_codebook_buffer_index) {
-            av_log(s->avctx, AV_LOG_ERROR, "cbpz chunk too large (0x%X bytes)\n", chunk_size);
+            av_log(s->avctx, AV_LOG_ERROR, "cbpz chunk too large (%u bytes)\n",
+                   chunk_size);
             return AVERROR_INVALIDDATA;
         }
 
@@ -597,26 +602,21 @@ static int vqa_decode_frame(AVCodecContext *avctx,
                             AVPacket *avpkt)
 {
     VqaContext *s = avctx->priv_data;
+    AVFrame *frame = data;
     int res;
 
-    if (s->frame.data[0])
-        avctx->release_buffer(avctx, &s->frame);
-
-    if ((res = ff_get_buffer(avctx, &s->frame))) {
-        av_log(s->avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+    if ((res = ff_get_buffer(avctx, frame, 0)) < 0)
         return res;
-    }
 
     bytestream2_init(&s->gb, avpkt->data, avpkt->size);
-    if ((res = vqa_decode_chunk(s)) < 0)
+    if ((res = vqa_decode_chunk(s, frame)) < 0)
         return res;
 
     /* make the palette available on the way out */
-    memcpy(s->frame.data[1], s->palette, PALETTE_COUNT * 4);
-    s->frame.palette_has_changed = 1;
+    memcpy(frame->data[1], s->palette, PALETTE_COUNT * 4);
+    frame->palette_has_changed = 1;
 
     *got_frame      = 1;
-    *(AVFrame*)data = s->frame;
 
     /* report that the buffer was completely consumed */
     return avpkt->size;
@@ -629,9 +629,6 @@ static av_cold int vqa_decode_end(AVCodecContext *avctx)
     av_freep(&s->codebook);
     av_freep(&s->next_codebook_buffer);
     av_freep(&s->decode_buffer);
-
-    if (s->frame.data[0])
-        avctx->release_buffer(avctx, &s->frame);
 
     return 0;
 }

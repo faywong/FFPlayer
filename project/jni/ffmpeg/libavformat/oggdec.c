@@ -57,7 +57,7 @@ static const struct ogg_codec * const ogg_codecs[] = {
 };
 
 static int64_t ogg_calc_pts(AVFormatContext *s, int idx, int64_t *dts);
-static int ogg_read_close(AVFormatContext *s);
+static int ogg_new_stream(AVFormatContext *s, uint32_t serial);
 
 //FIXME We could avoid some structure duplication
 static int ogg_save(AVFormatContext *s)
@@ -170,30 +170,47 @@ static const struct ogg_codec *ogg_find_codec(uint8_t *buf, int size)
  * situation where a new audio stream spawn (identified with a new serial) and
  * must replace the previous one (track switch).
  */
-static int ogg_replace_stream(AVFormatContext *s, uint32_t serial)
+static int ogg_replace_stream(AVFormatContext *s, uint32_t serial, int nsegs)
 {
     struct ogg *ogg = s->priv_data;
     struct ogg_stream *os;
-    unsigned bufsize;
-    uint8_t *buf;
     const struct ogg_codec *codec;
+    int i = 0;
 
-    if (ogg->nstreams != 1) {
-        av_log_missing_feature(s, "Changing stream parameters in multistream ogg", 0);
+    if (s->pb->seekable) {
+        uint8_t magic[8];
+        int64_t pos = avio_tell(s->pb);
+        avio_skip(s->pb, nsegs);
+        avio_read(s->pb, magic, sizeof(magic));
+        avio_seek(s->pb, pos, SEEK_SET);
+        codec = ogg_find_codec(magic, sizeof(magic));
+        if (!codec) {
+            av_log(s, AV_LOG_ERROR, "Cannot identify new stream\n");
+            return AVERROR_INVALIDDATA;
+        }
+        for (i = 0; i < ogg->nstreams; i++) {
+            if (ogg->streams[i].codec == codec)
+                break;
+        }
+        if (i >= ogg->nstreams)
+            return ogg_new_stream(s, serial);
+    } else if (ogg->nstreams != 1) {
+        avpriv_report_missing_feature(s, "Changing stream parameters in multistream ogg");
         return AVERROR_PATCHWELCOME;
     }
 
-    os = &ogg->streams[0];
+    os = &ogg->streams[i];
 
     os->serial  = serial;
-    return 0;
+    return i;
 
+#if 0
     buf     = os->buf;
     bufsize = os->bufsize;
     codec   = os->codec;
 
-    if (!ogg->state || ogg->state->streams[0].private != os->private)
-        av_freep(&ogg->streams[0].private);
+    if (!ogg->state || ogg->state->streams[i].private != os->private)
+        av_freep(&ogg->streams[i].private);
 
     /* Set Ogg stream settings similar to what is done in ogg_new_stream(). We
      * also re-use the ogg_stream allocated buffer */
@@ -204,7 +221,8 @@ static int ogg_replace_stream(AVFormatContext *s, uint32_t serial)
     os->header  = -1;
     os->codec   = codec;
 
-    return 0;
+    return i;
+#endif
 }
 
 static int ogg_new_stream(AVFormatContext *s, uint32_t serial)
@@ -335,7 +353,7 @@ static int ogg_read_page(AVFormatContext *s, int *sid)
     idx = ogg_find_stream(ogg, serial);
     if (idx < 0) {
         if (data_packets_seen(ogg))
-            idx = ogg_replace_stream(s, serial);
+            idx = ogg_replace_stream(s, serial, nsegs);
         else
             idx = ogg_new_stream(s, serial);
 
@@ -653,7 +671,12 @@ static int ogg_read_header(AVFormatContext *s)
             av_log(s, AV_LOG_ERROR, "Header parsing failed for stream %d\n", i);
             ogg->streams[i].codec = NULL;
         } else if (os->codec && os->nb_header < os->codec->nb_header) {
-            av_log(s, AV_LOG_WARNING, "Number of headers (%d) mismatch for stream %d\n", os->nb_header, i);
+            av_log(s, AV_LOG_WARNING,
+                   "Headers mismatch for stream %d: "
+                   "expected %d received %d.\n",
+                   i, os->codec->nb_header, os->nb_header);
+            if (s->error_recognition & AV_EF_EXPLODE)
+                return AVERROR_INVALIDDATA;
         }
         if (os->start_granule != OGG_NOGRANULE_VALUE)
             os->lastpts = s->streams[i]->start_time =
@@ -716,6 +739,11 @@ static int ogg_read_packet(AVFormatContext *s, AVPacket *pkt)
     int idx, ret;
     int pstart, psize;
     int64_t fpos, pts, dts;
+
+    if (s->io_repositioned) {
+        ogg_reset(s);
+        s->io_repositioned = 0;
+    }
 
     //Get an ogg packet
 retry:
@@ -831,5 +859,5 @@ AVInputFormat ff_ogg_demuxer = {
     .read_seek      = ogg_read_seek,
     .read_timestamp = ogg_read_timestamp,
     .extensions     = "ogg",
-    .flags          = AVFMT_GENERIC_INDEX,
+    .flags          = AVFMT_GENERIC_INDEX | AVFMT_TS_DISCONT | AVFMT_NOBINSEARCH,
 };

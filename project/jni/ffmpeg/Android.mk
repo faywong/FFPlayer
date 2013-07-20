@@ -3,7 +3,6 @@
 # Srdjan Obucina <obucinac@gmail.com>
 
 LOCAL_PATH:=$(call my-dir)
-#FFMPEG_REBUILD_FROM_SOURCE:=yes
 
 ifneq ($(FFMPEG_REBUILD_FROM_SOURCE),yes)
 
@@ -18,16 +17,17 @@ endif
 
 else
 
-ifeq ($(notdir $(LOCAL_PATH)),ffmpeg) # Build only from ffmpeg directory, ignore symlinks
-
-FFMPEG_VERBOSE_BUILD := yes
-
 FFMPEG_ROOT_DIR := $(LOCAL_PATH)
-FFMPEG_CONFIG_DIR := android/$(TARGET_ARCH_ABI)
+FFMPEG_CONFIG_DIR := android/$(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT)
 
 VERSION_SUFFIX := -$(shell (cat $(FFMPEG_ROOT_DIR)/RELEASE))
+$(warning $(VERSION_SUFFIX))
 
-ifeq ($(findstring 1.1, $(VERSION_SUFFIX)),1.1)
+ifeq ($(findstring 2.0, $(VERSION_SUFFIX)),2.0)
+    VERSION_BRANCH := 2.0
+else ifeq ($(findstring 1.2, $(VERSION_SUFFIX)),1.2)
+    VERSION_BRANCH := 1.2
+else ifeq ($(findstring 1.1, $(VERSION_SUFFIX)),1.1)
     VERSION_BRANCH := 1.1
 else ifeq ($(findstring 1.0, $(VERSION_SUFFIX)),1.0)
     VERSION_BRANCH := 1.0
@@ -53,9 +53,6 @@ include $(FFMPEG_ROOT_DIR)/Android_configure.mk
 
 include $(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR)/config.mak
 
-CONFIG_STATIC :=
-CONFIG_FFMPEG_COMPILE_TOOLS :=
-
 TOOLS_LIBRARIES :=
 
 #============================== libavdevice =============================
@@ -77,7 +74,6 @@ ifeq ($(CONFIG_AVDEVICE),yes)
             -Wl,--version-script,$(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR)/$(FFMPEG_LIB_DIR)/libavdevice.ver
         LOCAL_SHARED_LIBRARIES := \
             $(FFLIBS)
-        LOCAL_LDLIBS := -lz
         LOCAL_MODULE_TAGS := optional
         LOCAL_PRELINK_MODULE := false
         LOCAL_MODULE := $(FFNAME)
@@ -157,14 +153,15 @@ ifeq ($(CONFIG_AVFORMAT),yes)
             $(FFFILES)
         LOCAL_C_INCLUDES := \
             $(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR) \
-            $(FFMPEG_ROOT_DIR)
+            $(FFMPEG_ROOT_DIR) \
+            external/zlib
         LOCAL_CFLAGS += \
             $(FFCFLAGS)
         LOCAL_LDFLAGS += \
             -Wl,--version-script,$(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR)/$(FFMPEG_LIB_DIR)/libavformat.ver
         LOCAL_SHARED_LIBRARIES := \
-            $(FFLIBS)
-        LOCAL_LDLIBS := -lz
+            $(FFLIBS) \
+            libz
         LOCAL_MODULE_TAGS := optional
         LOCAL_PRELINK_MODULE := false
         LOCAL_MODULE := $(FFNAME)
@@ -176,11 +173,13 @@ ifeq ($(CONFIG_AVFORMAT),yes)
             $(FFFILES)
         LOCAL_C_INCLUDES := \
             $(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR) \
-            $(FFMPEG_ROOT_DIR)
+            $(FFMPEG_ROOT_DIR) \
+            external/zlib
         LOCAL_CFLAGS += \
             $(FFCFLAGS)
         LOCAL_STATIC_LIBRARIES := \
-            $(FFLIBS)
+            $(FFLIBS) \
+            libz
         LOCAL_MODULE_TAGS := optional
         LOCAL_PRELINK_MODULE := false
         LOCAL_MODULE := $(FFNAME)
@@ -201,14 +200,15 @@ ifeq ($(CONFIG_AVCODEC),yes)
             $(FFFILES)
         LOCAL_C_INCLUDES := \
             $(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR) \
-            $(FFMPEG_ROOT_DIR)
+            $(FFMPEG_ROOT_DIR) \
+            external/zlib
         LOCAL_CFLAGS += \
             $(FFCFLAGS)
         LOCAL_LDFLAGS += \
             -Wl,--version-script,$(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR)/$(FFMPEG_LIB_DIR)/libavcodec.ver
         LOCAL_SHARED_LIBRARIES := \
-            $(FFLIBS)
-        LOCAL_LDLIBS := -lz
+            $(FFLIBS) \
+            libz
         LOCAL_MODULE_TAGS := optional
         LOCAL_PRELINK_MODULE := false
         LOCAL_MODULE := $(FFNAME)
@@ -220,11 +220,13 @@ ifeq ($(CONFIG_AVCODEC),yes)
             $(FFFILES)
         LOCAL_C_INCLUDES := \
             $(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR) \
-            $(FFMPEG_ROOT_DIR)
+            $(FFMPEG_ROOT_DIR) \
+            external/zlib
         LOCAL_CFLAGS += \
             $(FFCFLAGS)
         LOCAL_STATIC_LIBRARIES := \
-            $(FFLIBS)
+            $(FFLIBS) \
+            libz
         LOCAL_MODULE_TAGS := optional
         LOCAL_PRELINK_MODULE := false
         LOCAL_MODULE := $(FFNAME)
@@ -446,7 +448,6 @@ ifeq ($(CONFIG_STATIC),yes)
 endif
 #========================================================================
 
-ifeq ($(CONFIG_FFMPEG_COMPILE_TOOLS),yes)
 #============================== avconv ==================================
 ifeq ($(CONFIG_AVCONV),yes)
     ifeq ($(CONFIG_SHARED),yes)
@@ -516,6 +517,16 @@ ifeq ($(CONFIG_FFMPEG),yes)
         LOCAL_SRC_FILES := \
             cmdutils.c \
             ffmpeg.c
+        ifeq ($(VERSION_BRANCH),2.0)
+            LOCAL_SRC_FILES +=  \
+                ffmpeg_filter.c \
+                ffmpeg_opt.c
+        endif
+        ifeq ($(VERSION_BRANCH),1.2)
+            LOCAL_SRC_FILES +=  \
+                ffmpeg_filter.c \
+                ffmpeg_opt.c
+        endif
         ifeq ($(VERSION_BRANCH),1.1)
             LOCAL_SRC_FILES +=  \
                 ffmpeg_filter.c \
@@ -539,6 +550,16 @@ ifeq ($(CONFIG_FFMPEG),yes)
         LOCAL_SRC_FILES := \
             cmdutils.c \
             ffmpeg.c
+        ifeq ($(VERSION_BRANCH),2.0)
+            LOCAL_SRC_FILES +=  \
+                ffmpeg_filter.c \
+                ffmpeg_opt.c
+        endif
+        ifeq ($(VERSION_BRANCH),1.2)
+            LOCAL_SRC_FILES +=  \
+                ffmpeg_filter.c \
+                ffmpeg_opt.c
+        endif
         ifeq ($(VERSION_BRANCH),1.1)
             LOCAL_SRC_FILES +=  \
                 ffmpeg_filter.c \
@@ -551,7 +572,8 @@ ifeq ($(CONFIG_FFMPEG),yes)
         endif
         LOCAL_C_INCLUDES := \
             $(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR)
-        LOCAL_LDLIBS := -lz
+        LOCAL_SHARED_LIBRARIES := \
+            libz
         LOCAL_STATIC_LIBRARIES := \
             $(TOOLS_LIBRARIES)
 	LOCAL_MODULE_TAGS := optional
@@ -583,7 +605,8 @@ ifeq ($(CONFIG_FFPROBE),yes)
             ffprobe.c
         LOCAL_C_INCLUDES := \
             $(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR)
-        LOCAL_LDLIBS := -lz
+        LOCAL_SHARED_LIBRARIES := \
+            libz
         LOCAL_STATIC_LIBRARIES := \
             $(TOOLS_LIBRARIES)
         LOCAL_MODULE_TAGS := optional
@@ -604,7 +627,9 @@ ifeq ($(CONFIG_FFSERVER),yes)
             $(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR)
         LOCAL_SHARED_LIBRARIES := \
             $(TOOLS_LIBRARIES)
-        LOCAL_LDLIBS := -ldl -lz
+        LOCAL_SHARED_LIBRARIES += \
+            libdl \
+            libz
         LOCAL_MODULE_TAGS := optional
         LOCAL_MODULE := ffserver$(VERSION_SUFFIX)
         include $(BUILD_EXECUTABLE)
@@ -616,7 +641,9 @@ ifeq ($(CONFIG_FFSERVER),yes)
             ffserver.c
         LOCAL_C_INCLUDES := \
             $(FFMPEG_ROOT_DIR)/$(FFMPEG_CONFIG_DIR)
-        LOCAL_LDLIBS := -ldl -lz
+        LOCAL_SHARED_LIBRARIES := \
+            libdl \
+            libz
         LOCAL_STATIC_LIBRARIES := \
             $(TOOLS_LIBRARIES)
         LOCAL_MODULE_TAGS := optional
@@ -625,6 +652,4 @@ ifeq ($(CONFIG_FFSERVER),yes)
     endif
 endif
 #========================================================================
-endif #CONFIG_FFMPEG_COMPILE_TOOLS
-endif
 endif

@@ -107,6 +107,13 @@ static int libopus_configure_encoder(AVCodecContext *avctx, OpusMSEncoder *enc,
 {
     int ret;
 
+    if (avctx->global_quality) {
+        av_log(avctx, AV_LOG_ERROR,
+               "Quality-based encoding not supported, "
+               "please specify a bitrate and VBR setting.\n");
+        return AVERROR(EINVAL);
+    }
+
     ret = opus_multistream_encoder_ctl(enc, OPUS_SET_BITRATE(avctx->bit_rate));
     if (ret != OPUS_OK) {
         av_log(avctx, AV_LOG_ERROR,
@@ -149,7 +156,7 @@ static int libopus_configure_encoder(AVCodecContext *avctx, OpusMSEncoder *enc,
     return OPUS_OK;
 }
 
-static int av_cold libopus_encode_init(AVCodecContext *avctx)
+static av_cold int libopus_encode_init(AVCodecContext *avctx)
 {
     LibopusEncContext *opus = avctx->priv_data;
     const uint8_t *channel_mapping;
@@ -324,10 +331,8 @@ static int libopus_encode(AVCodecContext *avctx, AVPacket *avpkt,
     /* Maximum packet size taken from opusenc in opus-tools. 60ms packets
      * consist of 3 frames in one packet. The maximum frame size is 1275
      * bytes along with the largest possible packet header of 7 bytes. */
-    if (ret = ff_alloc_packet(avpkt, (1275 * 3 + 7) * opus->stream_count)) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, (1275 * 3 + 7) * opus->stream_count)) < 0)
         return ret;
-    }
 
     if (avctx->sample_fmt == AV_SAMPLE_FMT_FLT)
         ret = opus_multistream_encode_float(opus->enc, (float *)audio,
@@ -354,7 +359,7 @@ static int libopus_encode(AVCodecContext *avctx, AVPacket *avpkt,
     return 0;
 }
 
-static int av_cold libopus_encode_close(AVCodecContext *avctx)
+static av_cold int libopus_encode_close(AVCodecContext *avctx)
 {
     LibopusEncContext *opus = avctx->priv_data;
 

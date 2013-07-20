@@ -119,6 +119,16 @@ static int url_alloc_for_protocol (URLContext **puc, struct URLProtocol *up,
     if (up->flags & URL_PROTOCOL_FLAG_NETWORK && !ff_network_init())
         return AVERROR(EIO);
 #endif
+    if ((flags & AVIO_FLAG_READ) && !up->url_read) {
+        av_log(NULL, AV_LOG_ERROR,
+               "Impossible to open the '%s' protocol for reading\n", up->name);
+        return AVERROR(EIO);
+    }
+    if ((flags & AVIO_FLAG_WRITE) && !up->url_write) {
+        av_log(NULL, AV_LOG_ERROR,
+               "Impossible to open the '%s' protocol for writing\n", up->name);
+        return AVERROR(EIO);
+    }
     uc = av_mallocz(sizeof(URLContext) + strlen(filename) + 1);
     if (!uc) {
         err = AVERROR(ENOMEM);
@@ -210,7 +220,9 @@ int ffurl_alloc(URLContext **puc, const char *filename, int flags,
                                      "Missing call to av_register_all()?\n");
     }
 
-    if (filename[proto_len] != ':' &&  filename[proto_len] != ',' || is_dos_path(filename))
+    if (filename[proto_len] != ':' &&
+        (filename[proto_len] != ',' || !strchr(filename + proto_len + 1, ':')) ||
+        is_dos_path(filename))
         strcpy(proto_str, "file");
     else
         av_strlcpy(proto_str, filename, FFMIN(proto_len+1, sizeof(proto_str)));
@@ -229,6 +241,8 @@ int ffurl_alloc(URLContext **puc, const char *filename, int flags,
             return url_alloc_for_protocol (puc, up, filename, flags, int_cb);
     }
     *puc = NULL;
+    if (!strcmp("https", proto_str))
+        av_log(NULL, AV_LOG_WARNING, "https protocol not found, recompile with openssl or gnutls enabled.\n");
     return AVERROR_PROTOCOL_NOT_FOUND;
 }
 
@@ -278,7 +292,7 @@ static inline int retry_transfer_wrapper(URLContext *h, unsigned char *buf, int 
                 av_usleep(1000);
             }
         } else if (ret < 1)
-            return ret < 0 ? ret : len;
+            return (ret < 0 && ret != AVERROR_EOF) ? ret : len;
         if (ret)
            fast_retries = FFMAX(fast_retries, 2);
         len += ret;

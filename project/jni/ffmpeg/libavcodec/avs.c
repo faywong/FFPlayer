@@ -21,6 +21,7 @@
 
 #include "avcodec.h"
 #include "get_bits.h"
+#include "internal.h"
 
 
 typedef struct {
@@ -54,16 +55,13 @@ avs_decode_frame(AVCodecContext * avctx,
     AVFrame *const p =  &avs->picture;
     const uint8_t *table, *vect;
     uint8_t *out;
-    int i, j, x, y, stride, vect_w = 3, vect_h = 3;
+    int i, j, x, y, stride, ret, vect_w = 3, vect_h = 3;
     AvsVideoSubType sub_type;
     AvsBlockType type;
     GetBitContext change_map = {0}; //init to silence warning
 
-    if (avctx->reget_buffer(avctx, p)) {
-        av_log(avctx, AV_LOG_ERROR, "reget_buffer() failed\n");
-        return -1;
-    }
-    p->reference = 3;
+    if ((ret = ff_reget_buffer(avctx, p)) < 0)
+        return ret;
     p->pict_type = AV_PICTURE_TYPE_P;
     p->key_frame = 0;
 
@@ -96,7 +94,7 @@ avs_decode_frame(AVCodecContext * avctx,
     }
 
     if (type != AVS_VIDEO)
-        return -1;
+        return AVERROR_INVALIDDATA;
 
     switch (sub_type) {
     case AVS_I_FRAME:
@@ -118,7 +116,7 @@ avs_decode_frame(AVCodecContext * avctx,
         break;
 
     default:
-      return -1;
+      return AVERROR_INVALIDDATA;
     }
 
     if (buf_end - buf < 256 * vect_w * vect_h)
@@ -151,7 +149,8 @@ avs_decode_frame(AVCodecContext * avctx,
             align_get_bits(&change_map);
     }
 
-    *picture   = avs->picture;
+    if ((ret = av_frame_ref(picture, &avs->picture)) < 0)
+        return ret;
     *got_frame = 1;
 
     return buf_size;
@@ -159,18 +158,17 @@ avs_decode_frame(AVCodecContext * avctx,
 
 static av_cold int avs_decode_init(AVCodecContext * avctx)
 {
-    AvsContext *const avs = avctx->priv_data;
+    AvsContext *s = avctx->priv_data;
     avctx->pix_fmt = AV_PIX_FMT_PAL8;
-    avcodec_get_frame_defaults(&avs->picture);
     avcodec_set_dimensions(avctx, 318, 198);
+    avcodec_get_frame_defaults(&s->picture);
     return 0;
 }
 
 static av_cold int avs_decode_end(AVCodecContext *avctx)
 {
     AvsContext *s = avctx->priv_data;
-    if (s->picture.data[0])
-        avctx->release_buffer(avctx, &s->picture);
+    av_frame_unref(&s->picture);
     return 0;
 }
 

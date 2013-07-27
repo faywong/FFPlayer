@@ -59,10 +59,10 @@ public class FFMediaLibrary extends ListActivity implements MusicUtils.Defs, OnI
         protocol_pinner.setAdapter(adapter);
         protocol_pinner.setOnItemSelectedListener(this);
         url_portion = (EditText) findViewById(R.id.url_portion);
-        
+
         Button netwok_play_btn = (Button) findViewById(R.id.network_play_btn);
         netwok_play_btn.setOnClickListener(new View.OnClickListener() {
-            
+
             @Override
             public void onClick(View v) {
                 // TODO Auto-generated method stub
@@ -79,7 +79,7 @@ public class FFMediaLibrary extends ListActivity implements MusicUtils.Defs, OnI
                 }
                 Log.d(TAG, "onClick() in check point 2");
 
-                String network_src_url = target_protocol + "://" + url_remaining_portion;
+                String network_src_url = target_protocol + url_remaining_portion;
                 Log.d(TAG, "The target network src url:" + network_src_url);
                 Intent launchFFPlayer = new Intent(Intent.ACTION_VIEW);
                 Uri uri = Uri.parse(network_src_url);
@@ -96,7 +96,7 @@ public class FFMediaLibrary extends ListActivity implements MusicUtils.Defs, OnI
                 }
             }
         });
-        
+
         MakeCursor();
 
         if (mCursor == null) {

@@ -202,6 +202,6 @@
     <string name="no_videos_title">No videos</string>
     <string name="network_source_label">Network</string>
     <string name="file_system_source_label">Local</string>
-    <string name="network_source_hint">network url here(double forward slash not needed)</string>
+    <string name="network_source_hint">network url here</string>
     <string name="network_play_button_label">Play</string>
 </resources>

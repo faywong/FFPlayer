@@ -66,7 +66,7 @@
 const char program_name[] = "ffplay";
 const int program_birth_year = 2003;
 
-#define DISABLE_LONG_LOG
+// #define DISABLE_LONG_LOG
 
 #define MAX_QUEUE_SIZE (15 * 1024 * 1024)
 #define MIN_FRAMES 5
@@ -314,7 +314,7 @@ static int android_player_adapter_get_current_position()
     int cur_position = 0;
     if (NULL != is) {
         cur_position = get_master_clock(is) * 1000 / AV_TIME_BASE;
-        fprintf(stderr, AV_LOG_DEBUG, "cur_position:%d miniseconds", cur_position);
+        fprintf(stderr, "cur_position:%d miniseconds", cur_position);
     }
     return cur_position;
 }
@@ -324,7 +324,7 @@ static int android_player_adapter_get_duration()
     int duration = 0;
     if (NULL != is) {
         duration = is->ic->duration * 1000 / AV_TIME_BASE;
-        fprintf(stderr, AV_LOG_DEBUG, "duration:%d miniseconds", duration);
+        fprintf(stderr, "duration:%d miniseconds", duration);
     }
     return duration;
 }
@@ -1101,7 +1101,7 @@ static void do_exit(VideoState *is)
     if (show_status)
         printf("\n");
     SDL_Quit();
-    fprintf(stderr, AV_LOG_QUIET, "%s", "");
+    fprintf(stderr, "%s", "");
     exit(0);
 }
 
@@ -1141,7 +1141,7 @@ static int video_open(VideoState *is, int force_set_video_mode, VideoPicture *vp
         return 0;
     screen = SDL_SetVideoMode(w, h, 0, flags);
     if (!screen) {
-        fprintf(stderr, AV_LOG_FATAL, "SDL: could not set video mode - exiting\n");
+        fprintf(stderr, "SDL: could not set video mode - exiting\n");
         do_exit(is);
     }
     if (!window_title)
@@ -1523,7 +1523,7 @@ display:
                 av_diff = get_master_clock(is) - get_clock(&is->vidclk);
             else if (is->audio_st)
                 av_diff = get_master_clock(is) - get_clock(&is->audclk);
-            fprintf(stderr, AV_LOG_INFO,
+            fprintf(stderr,
                    "%7.2f %s:%7.3f fd=%4d aq=%5dKB vq=%5dKB sq=%5dB f=%"PRId64"/%"PRId64"   \r",
                    get_master_clock(is),
                    (is->audio_st && is->video_st) ? "A-V" : (is->video_st ? "M-V" : (is->audio_st ? "M-A" : "   ")),
@@ -1561,7 +1561,7 @@ static void alloc_picture(VideoState *is)
     if (!vp->bmp || vp->bmp->pitches[0] < vp->width || bufferdiff < (int64_t)vp->height * vp->bmp->pitches[0]) {
         /* SDL allocates a buffer smaller than requested if the video
          * overlay hardware is unable to support the requested size. */
-        fprintf(stderr, AV_LOG_FATAL,
+        fprintf(stderr,
                "Error: the video system does not support an image\n"
                         "size of %dx%d pixels. Try using -lowres or -vf \"scale=w:h\"\n"
                         "to reduce the image size.\n", vp->width, vp->height );
@@ -1677,7 +1677,7 @@ static int queue_picture(VideoState *is, AVFrame *src_frame, double pts, int64_t
             vp->width, vp->height, src_frame->format, vp->width, vp->height,
             AV_PIX_FMT_YUV420P, sws_flags, NULL, NULL, NULL);
         if (is->img_convert_ctx == NULL) {
-            fprintf(stderr, AV_LOG_FATAL, "Cannot initialize the conversion context\n");
+            fprintf(stderr, "Cannot initialize the conversion context\n");
             exit(1);
         }
         sws_scale(is->img_convert_ctx, src_frame->data, src_frame->linesize,
@@ -1972,7 +1972,7 @@ static int video_thread(void *arg)
             || last_format != frame->format
             || last_serial != serial) {
 #ifndef DISABLE_LONG_LOG
-            fprintf(stderr, AV_LOG_DEBUG,
+            fprintf(stderr,
                    "Video frame changed from size:%dx%d format:%s serial:%d to size:%dx%d format:%s serial:%d\n",
                    last_w, last_h,
                    (const char *)av_x_if_null(av_get_pix_fmt_name(last_format), "none"), last_serial,
@@ -2258,7 +2258,7 @@ static int audio_decode_frame(VideoState *is)
                     av_get_channel_layout_string(buf1, sizeof(buf1), -1, is->audio_filter_src.channel_layout);
                     av_get_channel_layout_string(buf2, sizeof(buf2), -1, dec_channel_layout);
 #ifndef DISABLE_LONG_LOG
-                    fprintf(stderr, AV_LOG_DEBUG,
+                    fprintf(stderr,
                            "Audio frame changed from rate:%d ch:%d fmt:%s layout:%s serial:%d to rate:%d ch:%d fmt:%s layout:%s serial:%d\n",
                            is->audio_filter_src.freq, is->audio_filter_src.channels, av_get_sample_fmt_name(is->audio_filter_src.fmt), buf1, is->audio_last_serial,
                            is->frame->sample_rate, av_frame_get_channels(is->frame), av_get_sample_fmt_name(is->frame->format), buf2, is->audio_pkt_temp_serial);
@@ -2310,7 +2310,7 @@ static int audio_decode_frame(VideoState *is)
                                                  0, NULL);
                 if (!is->swr_ctx || swr_init(is->swr_ctx) < 0) {
 #ifndef DISABLE_LONG_LOG
-                    fprintf(stderr, AV_LOG_ERROR,
+                    fprintf(stderr,
                            "Cannot create sample rate converter for conversion of %d Hz %s %d channels to %d Hz %s %d channels!\n",
                             is->frame->sample_rate, av_get_sample_fmt_name(is->frame->format), av_frame_get_channels(is->frame),
                             is->audio_tgt.freq, av_get_sample_fmt_name(is->audio_tgt.fmt), is->audio_tgt.channels);
@@ -2330,13 +2330,13 @@ static int audio_decode_frame(VideoState *is)
                 int out_size  = av_samples_get_buffer_size(NULL, is->audio_tgt.channels, out_count, is->audio_tgt.fmt, 0);
                 int len2;
                 if (out_size < 0) {
-                    fprintf(stderr, AV_LOG_ERROR, "av_samples_get_buffer_size() failed\n");
+                    fprintf(stderr, "av_samples_get_buffer_size() failed\n");
                     break;
                 }
                 if (wanted_nb_samples != is->frame->nb_samples) {
                     if (swr_set_compensation(is->swr_ctx, (wanted_nb_samples - is->frame->nb_samples) * is->audio_tgt.freq / is->frame->sample_rate,
                                                 wanted_nb_samples * is->audio_tgt.freq / is->frame->sample_rate) < 0) {
-                        fprintf(stderr, AV_LOG_ERROR, "swr_set_compensation() failed\n");
+                        fprintf(stderr, "swr_set_compensation() failed\n");
                         break;
                     }
                 }
@@ -2345,11 +2345,11 @@ static int audio_decode_frame(VideoState *is)
                     return AVERROR(ENOMEM);
                 len2 = swr_convert(is->swr_ctx, out, out_count, in, is->frame->nb_samples);
                 if (len2 < 0) {
-                    fprintf(stderr, AV_LOG_ERROR, "swr_convert() failed\n");
+                    fprintf(stderr, "swr_convert() failed\n");
                     break;
                 }
                 if (len2 == out_count) {
-                    fprintf(stderr, AV_LOG_WARNING, "audio buffer is probably too small\n");
+                    fprintf(stderr, "audio buffer is probably too small\n");
                     swr_init(is->swr_ctx);
                 }
                 is->audio_buf = is->audio_buf1;
@@ -2463,7 +2463,7 @@ static int audio_open(void *opaque, int64_t wanted_channel_layout, int wanted_nb
     wanted_spec.channels = av_get_channel_layout_nb_channels(wanted_channel_layout);
     wanted_spec.freq = wanted_sample_rate;
     if (wanted_spec.freq <= 0 || wanted_spec.channels <= 0) {
-        fprintf(stderr, AV_LOG_ERROR, "Invalid sample rate or channel count!\n");
+        fprintf(stderr, "Invalid sample rate or channel count!\n");
         return -1;
     }
     wanted_spec.format = AUDIO_S16SYS;
@@ -2472,24 +2472,24 @@ static int audio_open(void *opaque, int64_t wanted_channel_layout, int wanted_nb
     wanted_spec.callback = sdl_audio_callback;
     wanted_spec.userdata = opaque;
     while (SDL_OpenAudio(&wanted_spec, &spec) < 0) {
-        fprintf(stderr, AV_LOG_WARNING, "SDL_OpenAudio (%d channels): %s\n", wanted_spec.channels, SDL_GetError());
+        fprintf(stderr, "SDL_OpenAudio (%d channels): %s\n", wanted_spec.channels, SDL_GetError());
         wanted_spec.channels = next_nb_channels[FFMIN(7, wanted_spec.channels)];
         if (!wanted_spec.channels) {
-            fprintf(stderr, AV_LOG_ERROR,
+            fprintf(stderr,
                    "No more channel combinations to try, audio open failed\n");
             return -1;
         }
         wanted_channel_layout = av_get_default_channel_layout(wanted_spec.channels);
     }
     if (spec.format != AUDIO_S16SYS) {
-        fprintf(stderr, AV_LOG_ERROR,
+        fprintf(stderr,
                "SDL advised audio format %d is not supported!\n", spec.format);
         return -1;
     }
     if (spec.channels != wanted_spec.channels) {
         wanted_channel_layout = av_get_default_channel_layout(spec.channels);
         if (!wanted_channel_layout) {
-            fprintf(stderr, AV_LOG_ERROR,
+            fprintf(stderr,
                    "SDL advised channel count %d is not supported!\n", spec.channels);
             return -1;
         }
@@ -2529,9 +2529,9 @@ static int stream_component_open(VideoState *is, int stream_index)
     if (forced_codec_name)
         codec = avcodec_find_decoder_by_name(forced_codec_name);
     if (!codec) {
-        if (forced_codec_name) fprintf(stderr, AV_LOG_WARNING,
+        if (forced_codec_name) fprintf(stderr,
                                       "No codec could be found with name '%s'\n", forced_codec_name);
-        else                   fprintf(stderr, AV_LOG_WARNING,
+        else                   fprintf(stderr,
                                       "No codec could be found with id %d\n", avctx->codec_id);
         return -1;
     }
@@ -2540,8 +2540,8 @@ static int stream_component_open(VideoState *is, int stream_index)
     avctx->workaround_bugs   = workaround_bugs;
     avctx->lowres            = lowres;
     if(avctx->lowres > codec->max_lowres){
-        av_log(avctx, AV_LOG_WARNING, "The maximum value for lowres supported by the decoder is %d\n",
-                codec->max_lowres);
+        // av_log(avctx, AV_LOG_WARNING, "The maximum value for lowres supported by the decoder is %d\n",
+        //         codec->max_lowres);
         avctx->lowres= codec->max_lowres;
     }
     avctx->idct_algo         = idct;
@@ -2562,7 +2562,7 @@ static int stream_component_open(VideoState *is, int stream_index)
     if (avcodec_open2(avctx, codec, &opts) < 0)
         return -1;
     if ((t = av_dict_get(opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
-        fprintf(stderr, AV_LOG_ERROR, "Option %s not found.\n", t->key);
+        fprintf(stderr, "Option %s not found.\n", t->key);
         return AVERROR_OPTION_NOT_FOUND;
     }
 
@@ -2771,7 +2771,7 @@ static int read_thread(void *arg)
         goto fail;
     }
     if ((t = av_dict_get(format_opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
-        fprintf(stderr, AV_LOG_ERROR, "Option %s not found.\n", t->key);
+        fprintf(stderr, "Option %s not found.\n", t->key);
         ret = AVERROR_OPTION_NOT_FOUND;
         goto fail;
     }
@@ -2785,7 +2785,7 @@ static int read_thread(void *arg)
 
     err = avformat_find_stream_info(ic, opts);
     if (err < 0) {
-        fprintf(stderr, AV_LOG_WARNING,
+        fprintf(stderr,
                "%s: could not find codec parameters\n", is->filename);
         ret = -1;
         goto fail;
@@ -2815,7 +2815,7 @@ static int read_thread(void *arg)
             timestamp += ic->start_time;
         ret = avformat_seek_file(ic, -1, INT64_MIN, timestamp, INT64_MAX, 0);
         if (ret < 0) {
-            fprintf(stderr, AV_LOG_WARNING, "%s: could not seek to position %0.3f\n",
+            fprintf(stderr, "%s: could not seek to position %0.3f\n",
                     is->filename, (double)timestamp / AV_TIME_BASE);
         }
     }
@@ -2865,7 +2865,7 @@ static int read_thread(void *arg)
     }
 
     if (is->video_stream < 0 && is->audio_stream < 0) {
-        fprintf(stderr, AV_LOG_FATAL, "%s: could not open codecs\n", is->filename);
+        fprintf(stderr, "%s: could not open codecs\n", is->filename);
         ret = -1;
         goto fail;
     }
@@ -2902,7 +2902,7 @@ static int read_thread(void *arg)
 
             ret = avformat_seek_file(is->ic, -1, seek_min, seek_target, seek_max, is->seek_flags);
             if (ret < 0) {
-                fprintf(stderr, AV_LOG_ERROR,
+                fprintf(stderr,
                        "%s: error while seeking\n", is->ic->filename);
             } else {
                 if (is->audio_stream >= 0) {
@@ -3304,7 +3304,7 @@ static void event_loop(VideoState *cur_stream)
                     hh   = ns / 3600;
                     mm   = (ns % 3600) / 60;
                     ss   = (ns % 60);
-                    fprintf(stderr, AV_LOG_INFO,
+                    fprintf(stderr,
                            "Seek to %2.0f%% (%2d:%02d:%02d) of total duration (%2d:%02d:%02d)       \n", frac*100,
                             hh, mm, ss, thh, tmm, tss);
                     ts = frac * cur_stream->ic->duration;
@@ -3317,7 +3317,7 @@ static void event_loop(VideoState *cur_stream)
                 screen = SDL_SetVideoMode(FFMIN(16383, event.resize.w), event.resize.h, 0,
                                           SDL_HWSURFACE|SDL_RESIZABLE|SDL_ASYNCBLIT|SDL_HWACCEL);
                 if (!screen) {
-                    fprintf(stderr, AV_LOG_FATAL, "Failed to set video mode\n");
+                    fprintf(stderr, "Failed to set video mode\n");
                     do_exit(cur_stream);
                 }
                 screen_width  = cur_stream->width  = screen->w;
@@ -3339,7 +3339,7 @@ static void event_loop(VideoState *cur_stream)
 
 static int opt_frame_size(void *optctx, const char *opt, const char *arg)
 {
-    fprintf(stderr, AV_LOG_WARNING, "Option -s is deprecated, use -video_size.\n");
+    fprintf(stderr, "Option -s is deprecated, use -video_size.\n");
     return opt_default(NULL, "video_size", arg);
 }
 
@@ -3359,7 +3359,7 @@ static int opt_format(void *optctx, const char *opt, const char *arg)
 {
     file_iformat = av_find_input_format(arg);
     if (!file_iformat) {
-        fprintf(stderr, AV_LOG_FATAL, "Unknown input format: %s\n", arg);
+        fprintf(stderr, "Unknown input format: %s\n", arg);
         return AVERROR(EINVAL);
     }
     return 0;
@@ -3367,7 +3367,7 @@ static int opt_format(void *optctx, const char *opt, const char *arg)
 
 static int opt_frame_pix_fmt(void *optctx, const char *opt, const char *arg)
 {
-    fprintf(stderr, AV_LOG_WARNING, "Option -pix_fmt is deprecated, use -pixel_format.\n");
+    fprintf(stderr, "Option -pix_fmt is deprecated, use -pixel_format.\n");
     return opt_default(NULL, "pixel_format", arg);
 }
 
@@ -3380,7 +3380,7 @@ static int opt_sync(void *optctx, const char *opt, const char *arg)
     else if (!strcmp(arg, "ext"))
         av_sync_type = AV_SYNC_EXTERNAL_CLOCK;
     else {
-        fprintf(stderr, AV_LOG_ERROR, "Unknown value for %s: %s\n", opt, arg);
+        fprintf(stderr, "Unknown value for %s: %s\n", opt, arg);
         exit(1);
     }
     return 0;
@@ -3410,7 +3410,7 @@ static int opt_show_mode(void *optctx, const char *opt, const char *arg)
 static void opt_input_file(void *optctx, const char *filename)
 {
     if (input_filename) {
-        fprintf(stderr, AV_LOG_FATAL,
+        fprintf(stderr,
                "Argument '%s' provided as input filename, but '%s' was already specified.\n",
                 filename, input_filename);
         exit(1);
@@ -3424,7 +3424,7 @@ static int opt_codec(void *optctx, const char *opt, const char *arg)
 {
    const char *spec = strchr(opt, ':');
    if (!spec) {
-       fprintf(stderr, AV_LOG_ERROR,
+       fprintf(stderr,
               "No media specifier was specified in '%s' in option '%s'\n",
                arg, opt);
        return AVERROR(EINVAL);
@@ -3435,7 +3435,7 @@ static int opt_codec(void *optctx, const char *opt, const char *arg)
    case 's' : subtitle_codec_name = arg; break;
    case 'v' :    video_codec_name = arg; break;
    default:
-       fprintf(stderr, AV_LOG_ERROR,
+       fprintf(stderr,
               "Invalid media specifier '%s' in option '%s'\n", spec, opt);
        return AVERROR(EINVAL);
    }
@@ -3495,9 +3495,9 @@ static const OptionDef options[] = {
 
 static void show_usage(void)
 {
-    fprintf(stderr, AV_LOG_INFO, "Simple media player\n");
-    fprintf(stderr, AV_LOG_INFO, "usage: %s [options] input_file\n", program_name);
-    fprintf(stderr, AV_LOG_INFO, "\n");
+    fprintf(stderr, "Simple media player\n");
+    fprintf(stderr, "usage: %s [options] input_file\n", program_name);
+    fprintf(stderr, "\n");
 }
 
 void show_help_default(const char *opt, const char *arg)
@@ -3588,8 +3588,8 @@ int main(int argc, char **argv)
 
     if (!input_filename) {
         show_usage();
-        fprintf(stderr, AV_LOG_FATAL, "An input file must be specified\n");
-        fprintf(stderr, AV_LOG_FATAL,
+        fprintf(stderr, "An input file must be specified\n");
+        fprintf(stderr,
                "Use -h to get full help or, even better, run 'man %s'\n", program_name);
         exit(1);
     }
@@ -3606,8 +3606,8 @@ int main(int argc, char **argv)
     flags |= SDL_INIT_EVENTTHREAD; /* Not supported on Windows or Mac OS X */
 #endif
     if (SDL_Init (flags)) {
-        fprintf(stderr, AV_LOG_FATAL, "Could not initialize SDL - %s\n", SDL_GetError());
-        fprintf(stderr, AV_LOG_FATAL, "(Did you set the DISPLAY variable?)\n");
+        fprintf(stderr, "Could not initialize SDL - %s\n", SDL_GetError());
+        fprintf(stderr, "(Did you set the DISPLAY variable?)\n");
         exit(1);
     }
 
@@ -3622,7 +3622,7 @@ int main(int argc, char **argv)
     SDL_EventState(SDL_USEREVENT, SDL_IGNORE);
 
     if (av_lockmgr_register(lockmgr)) {
-        fprintf(stderr, AV_LOG_FATAL, "Could not initialize lock manager!\n");
+        fprintf(stderr, "Could not initialize lock manager!\n");
         do_exit(NULL);
     }
 
@@ -3631,7 +3631,7 @@ int main(int argc, char **argv)
 
     is = stream_open(input_filename, file_iformat);
     if (!is) {
-        fprintf(stderr, AV_LOG_FATAL, "Failed to initialize VideoState!\n");
+        fprintf(stderr, "Failed to initialize VideoState!\n");
         do_exit(NULL);
     }
 

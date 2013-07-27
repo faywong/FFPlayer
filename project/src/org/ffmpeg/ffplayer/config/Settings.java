@@ -151,7 +151,7 @@ public class Settings {
         }
         System.out.println("libSDL: Settings.Load(): enter");
         nativeInitKeymap();
-        
+
         for (int i = 0; i < SDL_Keys.JAVA_KEYCODE_LAST; i++) {
             int sdlKey = nativeGetKeymapKey(i);
             int idx = 0;
@@ -2242,8 +2242,8 @@ public class Settings {
     public static String        AdmobTestDeviceId                             = "";
 
     public static String        AppLibraries[]                                = { "sdl-1.2",
-            "avutil", "avcodec", "avformat", "avdevice", "swscale", "swresample", "avresample",
-            "avfilter"                                                       };
+        "avutil", "avcodec", "avformat", "swscale", "swresample", "avresample","avfilter", "avdevice",
+    };
 
     // These config options are modified by ChangeAppsettings.sh script - see
     // the detailed descriptions there

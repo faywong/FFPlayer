@@ -66,6 +66,8 @@
 const char program_name[] = "ffplay";
 const int program_birth_year = 2003;
 
+#define DISABLE_LONG_LOG
+
 #define MAX_QUEUE_SIZE (15 * 1024 * 1024)
 #define MIN_FRAMES 5
 
@@ -1969,12 +1971,14 @@ static int video_thread(void *arg)
             || last_h != frame->height
             || last_format != frame->format
             || last_serial != serial) {
+#ifndef DISABLE_LONG_LOG
             fprintf(stderr, AV_LOG_DEBUG,
                    "Video frame changed from size:%dx%d format:%s serial:%d to size:%dx%d format:%s serial:%d\n",
                    last_w, last_h,
                    (const char *)av_x_if_null(av_get_pix_fmt_name(last_format), "none"), last_serial,
                    frame->width, frame->height,
                    (const char *)av_x_if_null(av_get_pix_fmt_name(frame->format), "none"), serial);
+#endif
             avfilter_graph_free(&graph);
             graph = avfilter_graph_alloc();
             if ((ret = configure_video_filters(graph, is, vfilters, frame)) < 0) {
@@ -2253,11 +2257,12 @@ static int audio_decode_frame(VideoState *is)
                     char buf1[1024], buf2[1024];
                     av_get_channel_layout_string(buf1, sizeof(buf1), -1, is->audio_filter_src.channel_layout);
                     av_get_channel_layout_string(buf2, sizeof(buf2), -1, dec_channel_layout);
+#ifndef DISABLE_LONG_LOG
                     fprintf(stderr, AV_LOG_DEBUG,
                            "Audio frame changed from rate:%d ch:%d fmt:%s layout:%s serial:%d to rate:%d ch:%d fmt:%s layout:%s serial:%d\n",
                            is->audio_filter_src.freq, is->audio_filter_src.channels, av_get_sample_fmt_name(is->audio_filter_src.fmt), buf1, is->audio_last_serial,
                            is->frame->sample_rate, av_frame_get_channels(is->frame), av_get_sample_fmt_name(is->frame->format), buf2, is->audio_pkt_temp_serial);
-
+#endif
                     is->audio_filter_src.fmt            = is->frame->format;
                     is->audio_filter_src.channels       = av_frame_get_channels(is->frame);
                     is->audio_filter_src.channel_layout = dec_channel_layout;
@@ -2304,10 +2309,12 @@ static int audio_decode_frame(VideoState *is)
                                                  dec_channel_layout,           is->frame->format, is->frame->sample_rate,
                                                  0, NULL);
                 if (!is->swr_ctx || swr_init(is->swr_ctx) < 0) {
+#ifndef DISABLE_LONG_LOG
                     fprintf(stderr, AV_LOG_ERROR,
                            "Cannot create sample rate converter for conversion of %d Hz %s %d channels to %d Hz %s %d channels!\n",
                             is->frame->sample_rate, av_get_sample_fmt_name(is->frame->format), av_frame_get_channels(is->frame),
                             is->audio_tgt.freq, av_get_sample_fmt_name(is->audio_tgt.fmt), is->audio_tgt.channels);
+#endif
                     break;
                 }
                 is->audio_src.channel_layout = dec_channel_layout;
@@ -3196,6 +3203,8 @@ static void event_loop(VideoState *cur_stream)
                 break;
             case SDLK_p:
             case SDLK_SPACE:
+            case SDLK_F1:
+            case SDLK_F2:
                 toggle_pause(cur_stream);
                 break;
             case SDLK_s: // S: Step to next frame

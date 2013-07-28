@@ -110,6 +110,7 @@ public class DefaultRender extends GLSurfaceView_SDL.Renderer {
                 Settings.CommandLine,
                 ((Settings.SwVideoMode && Settings.MultiThreadedVideo) || Settings.CompatibilityHacksVideo) ? 1
                         : 0, android.os.Debug.isDebuggerConnected() ? 1 : 0);
+        System.out.println("libSDL: DefaultRenderer.onDrawFrame() ready to exit whole process");
         System.exit(0); // The main() returns here - I don't bother with
                         // deinit stuff, just terminate process
     }

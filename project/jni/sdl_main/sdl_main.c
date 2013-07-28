@@ -9,6 +9,7 @@
 #include "SDL_main.h"
 #include "SDL_android.h"
 
+#include "JNICtx.h"
 /* JNI-C wrapper stuff */
 
 #ifdef __cplusplus
@@ -31,7 +32,6 @@ struct ProcessContext {
 	JavaVM *jvm;
 	JNIEnv* jni_env;
     jobject thiz;
-    pthread_key_t tls_key;
 } gProcessContext = {
 		0,
 		NULL,
@@ -40,28 +40,13 @@ struct ProcessContext {
 		NULL
 };
 
-void global_detach_current_thread(void *context)
-{
-	__android_log_print(ANDROID_LOG_INFO, "libSDL", "global_detach_current_thread() in context:0x%x jvm:0x%x", context, gProcessContext.jvm);
-	JNIEnv** pJniEnv = (JNIEnv**)context;
-	if (NULL != pJniEnv && (NULL != *pJniEnv) && NULL != gProcessContext.jvm) {
-		free(pJniEnv);
-		pthread_setspecific(gProcessContext.tls_key, NULL);
-		if ((NULL != gProcessContext.jvm) && (*gProcessContext.jvm)->DetachCurrentThread(gProcessContext.jvm) != JNI_OK) {
-			__android_log_print(ANDROID_LOG_INFO, "libSDL", "FATAL ERROR! DetachCurrentThread() failed!");
-			return;
-		}
-	}
-}
-
 int JNI_OnLoad(JavaVM *jvm, void* reserved) {
     JNIEnv *env;
-	__android_log_print(ANDROID_LOG_INFO, "libSDL", "JNI_OnLoad() in jvm:%p", jvm);
-	gProcessContext.jvm = jvm;
+    __android_log_print(ANDROID_LOG_INFO, "libSDL", "JNI_OnLoad() in jvm:%p", jvm);
+    gProcessContext.jvm = jvm;
     if ((*jvm)->GetEnv(jvm, (void**) &env, JNI_VERSION_1_2) != JNI_OK) {
         return JNI_ERR;
     }
-    pthread_key_create(&gProcessContext.tls_key, global_detach_current_thread);
     return JNI_VERSION_1_2;
 }
 
@@ -97,17 +82,12 @@ int threadedMain(void * waitForDebugger)
 extern C_LINKAGE void
 Java_org_ffmpeg_ffplayer_render_DefaultRender_nativeInit(JNIEnv* env, jobject thiz, jstring jmediaurl, jstring cmdline, jint multiThreadedVideo, jint waitForDebugger)
 {
-	int i = 0;
-	char *mediaurl = NULL;
-	const jbyte *jstr;
-
-    if ((pthread_getspecific(gProcessContext.tls_key)) == NULL) {
-    	__android_log_print(ANDROID_LOG_INFO, "libSDL", "pthread_getspecific() NULL case");
-    	JNIEnv** pJniEnv = malloc(sizeof(JNIEnv*));
-    	if (NULL != pJniEnv) {
-    		*pJniEnv = env;
-    		pthread_setspecific(gProcessContext.tls_key, pJniEnv);
-    	}
+    int i = 0;
+    char *mediaurl = NULL;
+    const jbyte *jstr;
+    JNICtx *ctx = NULL;
+    if (!InitJNICtx(gProcessContext.jvm, &ctx)) {
+        LogJNIEnv(ctx, env);
     }
 
     gProcessContext.jni_env = env;

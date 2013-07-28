@@ -58,7 +58,7 @@ import android.view.SurfaceView;
  * <li>Optionally wraps, traces, and/or error-checks the renderer's OpenGL
  * calls.
  * </ul>
- * 
+ *
  * <h3>Using GLSurfaceView</h3>
  * <p>
  * Typically you use GLSurfaceView by subclassing it and overriding one or more
@@ -127,17 +127,17 @@ import android.view.SurfaceView;
  * Java cross-thread communication mechanism. In addition, one relatively easy
  * way to communicate with your renderer is to call
  * {@link #queueEvent(Runnable)}. For example:
- * 
+ *
  * <pre class="prettyprint">
  * class MyGLSurfaceView extends GLSurfaceView {
- * 
+ *
  *     private MyRenderer mMyRenderer;
- * 
+ *
  *     public void start() {
  *         mMyRenderer = ...;
  *         setRenderer(mMyRenderer);
  *     }
- * 
+ *
  *     public boolean onKeyDown(int keyCode, KeyEvent event) {
  *         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
  *             queueEvent(new Runnable() {
@@ -153,20 +153,20 @@ import android.view.SurfaceView;
  *     }
  * }
  * </pre>
- * 
+ *
  */
 public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Callback {
     /**
      * The renderer only renders when the surface is created, or when
      * {@link #requestRender} is called.
-     * 
+     *
      * @see #getRenderMode()
      * @see #setRenderMode(int)
      */
     public final static int RENDERMODE_WHEN_DIRTY   = 0;
     /**
      * The renderer is called continuously to re-render the scene.
-     * 
+     *
      * @see #getRenderMode()
      * @see #setRenderMode(int)
      * @see #requestRender()
@@ -177,7 +177,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * Check glError() after every GL call and throw an exception if glError
      * indicates that an error has occurred. This can be used to help track down
      * which OpenGL ES call is causing an error.
-     * 
+     *
      * @see #getDebugFlags
      * @see #setDebugFlags
      */
@@ -186,7 +186,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
     /**
      * Log GL calls to the system log at "verbose" level with tag
      * "GLSurfaceView".
-     * 
+     *
      * @see #getDebugFlags
      * @see #setDebugFlags
      */
@@ -228,7 +228,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * Wrapping is typically used for debugging purposes.
      * <p>
      * The default value is null.
-     * 
+     *
      * @param glWrapper
      *            the new GLWrapper
      */
@@ -240,7 +240,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * Set the debug flags to a new value. The value is constructed by
      * OR-together zero or more of the DEBUG_CHECK_* constants. The debug flags
      * take effect whenever a surface is created. The default value is zero.
-     * 
+     *
      * @param debugFlags
      *            the new debug flags
      * @see #DEBUG_CHECK_GL_ERROR
@@ -252,7 +252,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
 
     /**
      * Get the current value of the debug flags.
-     * 
+     *
      * @return the current value of the debug flags.
      */
     public int getDebugFlags() {
@@ -284,7 +284,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * <li>{@link #requestRender()}
      * <li>{@link #setRenderMode(int)}
      * </ul>
-     * 
+     *
      * @param renderer
      *            the renderer to use to perform OpenGL drawing.
      */
@@ -309,7 +309,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * If no setEGLConfigChooser method is called, then by default the view will
      * choose a config as close to 16-bit RGB as possible, with a depth buffer
      * as close to 16 bits as possible.
-     * 
+     *
      * @param configChooser
      */
     public void setEGLConfigChooser(EGLConfigChooser configChooser) {
@@ -331,7 +331,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * If no setEGLConfigChooser method is called, then by default the view will
      * choose a config as close to 16-bit RGB as possible, with a depth buffer
      * as close to 16 bits as possible.
-     * 
+     *
      * @param needDepth
      */
     public void setEGLConfigChooser(int bpp, boolean needDepth, boolean stencil, boolean gles2) {
@@ -349,7 +349,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * If no setEGLConfigChooser method is called, then by default the view will
      * choose a config as close to 16-bit RGB as possible, with a depth buffer
      * as close to 16 bits as possible.
-     * 
+     *
      */
     public void setEGLConfigChooser(int redSize, int greenSize, int blueSize, int alphaSize,
             int depthSize, int stencilSize, boolean gles2) {
@@ -369,7 +369,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * need to be updated.
      * <p>
      * This method can only be called after {@link #setRenderer(Renderer)}
-     * 
+     *
      * @param renderMode
      *            one of the RENDERMODE_X constants
      * @see #RENDERMODE_CONTINUOUSLY
@@ -382,7 +382,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
     /**
      * Get the current rendering mode. May be called from any thread. Must not
      * be called before a renderer has been set.
-     * 
+     *
      * @return the current rendering mode.
      * @see #RENDERMODE_CONTINUOUSLY
      * @see #RENDERMODE_WHEN_DIRTY
@@ -450,7 +450,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * Queue a runnable to be run on the GL rendering thread. This can be used
      * to communicate with the Renderer on the rendering thread. Must not be
      * called before a renderer has been set.
-     * 
+     *
      * @param r
      *            the runnable to be run on the GL rendering thread.
      */
@@ -480,7 +480,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * instance. Then you could add your own behavior before or after calling
      * the delegate. All the GLWrapper would do was instantiate and return the
      * wrapper GL instance:
-     * 
+     *
      * <pre class="prettyprint">
      * class MyGLWrapper implements GLWrapper {
      *     GL wrap(GL gl) {
@@ -491,13 +491,13 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      *     }
      * }
      * </pre>
-     * 
+     *
      * @see #setGLWrapper(GLWrapper)
      */
     public interface GLWrapper {
         /**
          * Wraps a gl interface in another gl interface.
-         * 
+         *
          * @param gl
          *            a GL interface that is to be wrapped.
          * @return either the input argument or another GL object that wraps the
@@ -531,8 +531,8 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * keep rendering correctly, a renderer must recreate any lost resources
      * that it still needs. The {@link #onSurfaceCreated(GL10, EGLConfig)}
      * method is a convenient place to do this.
-     * 
-     * 
+     *
+     *
      * @see #setRenderer(Renderer)
      */
     public static interface SwapBuffersCallback {
@@ -562,7 +562,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
          * not need to call the corresponding "glDelete" methods such as
          * glDeleteTextures to manually delete these lost resources.
          * <p>
-         * 
+         *
          * @param gl
          *            the GL interface. Use <code>instanceof</code> to test if
          *            the interface supports GL11 or higher interfaces.
@@ -582,7 +582,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
          * <p>
          * Typically you will set your viewport here. If your camera is fixed
          * then you could also set your projection matrix here:
-         * 
+         *
          * <pre class="prettyprint">
          * void onSurfaceChanged(GL10 gl, int width, int height) {
          *     gl.glViewport(0, 0, width, height);
@@ -593,7 +593,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
          *     gl.glFrustumf(-ratio, ratio, -1, 1, 1, 10);
          * }
          * </pre>
-         * 
+         *
          * @param gl
          *            the GL interface. Use <code>instanceof</code> to test if
          *            the interface supports GL11 or higher interfaces.
@@ -608,14 +608,14 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
          * This method is responsible for drawing the current frame.
          * <p>
          * The implementation of this method typically looks like this:
-         * 
+         *
          * <pre class="prettyprint">
          * void onDrawFrame(GL10 gl) {
          *     gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
          *     // ... other gl calls to render the scene ...
          * }
          * </pre>
-         * 
+         *
          * @param gl
          *            the GL interface. Use <code>instanceof</code> to test if
          *            the interface supports GL11 or higher interfaces.
@@ -653,7 +653,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
          * iterating through the results. Please consult the EGL specification
          * available from The Khronos Group to learn how to call
          * eglChooseConfig.
-         * 
+         *
          * @param egl
          *            the EGL10 for the current display.
          * @param display
@@ -826,7 +826,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
     /**
      * This class will choose a supported surface as close to RGB565 as
      * possible, with or without a depth buffer.
-     * 
+     *
      */
     private static class SimpleEGLConfigChooser16 extends ComponentSizeChooser {
         public SimpleEGLConfigChooser16(boolean withDepthBuffer, boolean stencil, boolean gles2) {
@@ -880,7 +880,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
 
         /**
          * Initialize EGL for a given configuration spec.
-         * 
+         *
          * @param configSpec
          */
         public void start() {
@@ -969,7 +969,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
 
         /**
          * Display the current render surface.
-         * 
+         *
          * @return false if the context has been lost.
          */
         public boolean swap() {
@@ -1012,7 +1012,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
      * A generic GL Thread. Takes care of initializing EGL and GL. Delegates to
      * a Renderer instance to do the actual drawing. Can be configured to render
      * continuously or on request.
-     * 
+     *
      */
     class GLThread extends Thread implements SwapBuffersCallback {
         GLThread(Renderer renderer) {
@@ -1033,7 +1033,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
              * When the android framework launches a second instance of an
              * activity, the new instance's onCreate() method may be called
              * before the first instance returns from onDestroy().
-             * 
+             *
              * This semaphore ensures that only one instance at a time accesses
              * EGL.
              */
@@ -1222,6 +1222,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
         public void requestExitAndWait() {
             // don't call this from GLThread thread or it is a guaranteed
             // deadlock!
+            Log.d("SDL", "requestExitAndWait() in");
             synchronized (this) {
                 mDone = true;
                 notify();
@@ -1235,7 +1236,7 @@ public class GLSurfaceView_SDL extends SurfaceView implements SurfaceHolder.Call
 
         /**
          * Queue an "event" to be run on the GL rendering thread.
-         * 
+         *
          * @param r
          *            the runnable to be run on the GL rendering thread.
          */

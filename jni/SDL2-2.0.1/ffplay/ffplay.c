@@ -128,7 +128,7 @@ typedef struct PacketQueue {
 typedef struct VideoPicture {
     double pts;             // presentation timestamp for this picture
     int64_t pos;            // byte position in file
-    SDL_Renderer *texture;
+    SDL_Texture *texture;
     int width, height; /* source height & width */
     int allocated;
     int reallocate;
@@ -284,7 +284,7 @@ typedef struct VideoState {
 } VideoState;
 
 static VideoState *is = NULL;
-extern oscl_player_adapter g_android_player_adapter;
+oscl_player_adapter g_android_player_adapter;
 
 static const char* android_player_adapter_get_name()
 {
@@ -880,7 +880,7 @@ static void video_image_display(VideoState *is)
     AVPicture pict;
     SDL_Rect rect;
     int i;
-    unsigned char* pixels = NULL;
+    uint8_t * pixels = NULL;
     int pitches = 0;
 	
     vp = &is->pictq[is->pictq_rindex];
@@ -893,9 +893,9 @@ static void video_image_display(VideoState *is)
 					SDL_LockTexture(vp->texture, NULL, (void **)&pixels,
                                                &pitches);
 
-                    pict.data[0] = pixels[0];
-                    pict.data[1] = pixels[2];
-                    pict.data[2] = pixels[1];
+                    pict.data[0] = (uint8_t *)pixels[0];
+                    pict.data[1] = (uint8_t *)pixels[2];
+                    pict.data[2] = (uint8_t *)pixels[1];
 
                     pict.linesize[0] = pitches;
                     pict.linesize[1] = pitches;
@@ -918,8 +918,10 @@ static void video_image_display(VideoState *is)
                           pitches);
 
         if (rect.x != is->last_display_rect.x || rect.y != is->last_display_rect.y || rect.w != is->last_display_rect.w || rect.h != is->last_display_rect.h || is->force_refresh) {
-			SDL_PixelFormat format = (SDL_PixelFormat) SDL_GetWindowPixelFormat(screen);
-            int bgcolor = SDL_MapRGB(&format, 0x00, 0x00, 0x00);
+			Uint32 format = SDL_GetWindowPixelFormat(screen);
+			SDL_PixelFormat *pFormat = SDL_AllocFormat(format);
+            int bgcolor = SDL_MapRGB(pFormat, 0x00, 0x00, 0x00);
+			SDL_FreeFormat(pFormat);
             fill_border(is->xleft, is->ytop, is->width, is->height, rect.x, rect.y, rect.w, rect.h, bgcolor, 1);
             is->last_display_rect = rect;
         }
@@ -983,14 +985,16 @@ static void video_audio_display(VideoState *s)
     } else {
         i_start = s->last_i_start;
     }
-	SDL_PixelFormat format = (SDL_PixelFormat) SDL_GetWindowPixelFormat(screen);
-    bgcolor = SDL_MapRGB(&format, 0x00, 0x00, 0x00);
+	
+	Uint32 format = SDL_GetWindowPixelFormat(screen);
+	SDL_PixelFormat *pFormat = SDL_AllocFormat(format);
+    bgcolor = SDL_MapRGB(pFormat, 0x00, 0x00, 0x00);
     if (s->show_mode == SHOW_MODE_WAVES) {
         fill_rectangle(screen,
                        s->xleft, s->ytop, s->width, s->height,
                        bgcolor, 0);
 
-        fgcolor = SDL_MapRGB(&format, 0xff, 0xff, 0xff);
+        fgcolor = SDL_MapRGB(pFormat, 0xff, 0xff, 0xff);
 
         /* total height for one channel */
         h = s->height / nb_display_channels;
@@ -1016,7 +1020,7 @@ static void video_audio_display(VideoState *s)
             }
         }
 
-        fgcolor = SDL_MapRGB(&format, 0x00, 0x00, 0xff);
+        fgcolor = SDL_MapRGB(pFormat, 0x00, 0x00, 0xff);
 
         for (ch = 1; ch < nb_display_channels; ch++) {
             y = s->ytop + ch * h;
@@ -1024,7 +1028,8 @@ static void video_audio_display(VideoState *s)
                            s->xleft, y, s->width, 1,
                            fgcolor, 0);
         }
-        SDL_UpdateRect(screen, s->xleft, s->ytop, s->width, s->height);
+		SDL_Rect rect = { s->xleft, s->ytop, s->width, s->height };
+        SDL_UpdateWindowSurfaceRects(screen, &rect, 1);
     } else {
         nb_display_channels= FFMIN(nb_display_channels, 2);
         if (rdft_bits != s->rdft_bits) {
@@ -1056,20 +1061,23 @@ static void video_audio_display(VideoState *s)
                        + data[1][2 * y + 1] * data[1][2 * y + 1])) : a;
                 a = FFMIN(a, 255);
                 b = FFMIN(b, 255);
-				SDL_PixelFormat format = (SDL_PixelFormat) SDL_GetWindowPixelFormat(screen);
-                fgcolor = SDL_MapRGB(&format, a, b, (a + b) / 2);
+                fgcolor = SDL_MapRGB(pFormat, a, b, (a + b) / 2);
 
                 fill_rectangle(screen,
                             s->xpos, s->height-y, 1, 1,
                             fgcolor, 0);
             }
         }
-        SDL_UpdateRect(screen, s->xpos, s->ytop, 1, s->height);
+		
+		SDL_Rect rect = { s->xpos, s->ytop, 1, s->height };
+        SDL_UpdateWindowSurfaceRects(screen, &rect, 1);
         if (!s->paused)
             s->xpos++;
         if (s->xpos >= s->width)
             s->xpos= s->xleft;
     }
+	
+	SDL_FreeFormat(pFormat);
 }
 
 static void stream_close(VideoState *is)
@@ -1128,12 +1136,9 @@ static void sigterm_handler(int sig)
 
 static int video_open(VideoState *is, int force_set_video_mode, VideoPicture *vp)
 {
-    int flags = SDL_HWSURFACE | SDL_ASYNCBLIT | SDL_HWACCEL;
     int w,h;
     SDL_Rect rect;
 
-    if (is_full_screen) flags |= SDL_FULLSCREEN;
-    else                flags |= SDL_RESIZABLE;
 
     if (vp && vp->width) {
         calculate_display_rect(&rect, 0, 0, INT_MAX, vp->height, vp);
@@ -1152,8 +1157,10 @@ static int video_open(VideoState *is, int force_set_video_mode, VideoPicture *vp
         h = default_height;
     }
     w = FFMIN(16383, w);
-    if (screen && is->width == screen->w && screen->w == w
-       && is->height== screen->h && screen->h == h && !force_set_video_mode)
+	int win_width = 0, win_height = 0;
+	SDL_GetWindowSize(screen, &win_width, &win_height);
+    if (screen && is->width == win_width && win_width == w
+       && is->height== win_height && win_height == h && !force_set_video_mode)
         return 0;
     screen = SDL_CreateWindow("FFPlayer",
                               SDL_WINDOWPOS_UNDEFINED,
@@ -1178,8 +1185,8 @@ static int video_open(VideoState *is, int force_set_video_mode, VideoPicture *vp
         window_title = input_filename;
     // TODO: SDL_WM_SetCaption(window_title, window_title);
 
-    is->width  = screen->w;
-    is->height = screen->h;
+    is->width  = win_width;
+    is->height = win_height;
 
     return 0;
 }
@@ -1677,7 +1684,8 @@ static int queue_picture(VideoState *is, AVFrame *src_frame, double pts, int64_t
             SDL_CondWait(is->pictq_cond, is->pictq_mutex);
         }
         /* if the queue is aborted, we have to pop the pending ALLOC event or wait for the allocation to complete */
-        if (is->videoq.abort_request && SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_EVENTMASK(FF_ALLOC_EVENT)) != 1) {
+		// TODO: think twice about the usage of SDL_PeepEvents
+        if (is->videoq.abort_request && SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) != 1) {
             while (!vp->allocated) {
                 SDL_CondWait(is->pictq_cond, is->pictq_mutex);
             }
@@ -2655,7 +2663,7 @@ static int stream_component_open(VideoState *is, int stream_index)
         is->video_st = ic->streams[stream_index];
 
         packet_queue_start(&is->videoq);
-        is->video_tid = SDL_CreateThread(video_thread, is);
+        is->video_tid = SDL_CreateThread(video_thread, "video_decoding", is);
         is->queue_attachments_req = 1;
         break;
     case AVMEDIA_TYPE_SUBTITLE:
@@ -2663,7 +2671,7 @@ static int stream_component_open(VideoState *is, int stream_index)
         is->subtitle_st = ic->streams[stream_index];
         packet_queue_start(&is->subtitleq);
 
-        is->subtitle_tid = SDL_CreateThread(subtitle_thread, is);
+        is->subtitle_tid = SDL_CreateThread(subtitle_thread, "subtitle_decoding", is);
         break;
     default:
         break;
@@ -3104,7 +3112,7 @@ static VideoState *stream_open(const char *filename, AVInputFormat *iformat)
     is->audio_clock_serial = -1;
     is->audio_last_serial = -1;
     is->av_sync_type = av_sync_type;
-    is->read_tid     = SDL_CreateThread(read_thread, is);
+    is->read_tid     = SDL_CreateThread(read_thread, "read_data", is);
     if (!is->read_tid) {
         av_free(is);
         return NULL;
@@ -3182,8 +3190,10 @@ static void toggle_full_screen(VideoState *is)
 
 static void toggle_audio_display(VideoState *is)
 {
-	SDL_PixelFormat format = (SDL_PixelFormat) SDL_GetWindowPixelFormat(screen);
-    int bgcolor = SDL_MapRGB(&format, 0x00, 0x00, 0x00);
+	Uint32 format = SDL_GetWindowPixelFormat(screen);
+	SDL_PixelFormat *pFormat = SDL_AllocFormat(format);
+
+    int bgcolor = SDL_MapRGB(pFormat, 0x00, 0x00, 0x00);
     int next = is->show_mode;
     do {
         next = (next + 1) % SHOW_MODE_NB;
@@ -3194,13 +3204,14 @@ static void toggle_audio_display(VideoState *is)
                     bgcolor, 1);
         is->force_refresh = 1;
         is->show_mode = next;
-    }
+    }	
+	SDL_FreeFormat(pFormat);
 }
 
 static void refresh_loop_wait_event(VideoState *is, SDL_Event *event) {
     double remaining_time = 0.0;
     SDL_PumpEvents();
-    while (!SDL_PeepEvents(event, 1, SDL_GETEVENT, SDL_ALLEVENTS)) {
+    while (!SDL_PeepEvents(event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT)) {
         if (!cursor_hidden && av_gettime() - cursor_last_shown > CURSOR_HIDE_DELAY) {
             SDL_ShowCursor(0);
             cursor_hidden = 1;
@@ -3304,9 +3315,12 @@ static void event_loop(VideoState *cur_stream)
                 break;
             }
             break;
+			// TODO:
+#if 0
         case SDL_VIDEOEXPOSE:
             cur_stream->force_refresh = 1;
             break;
+#endif
         case SDL_MOUSEBUTTONDOWN:
             if (exit_on_mousedown) {
                 do_exit(cur_stream);
@@ -3350,6 +3364,7 @@ static void event_loop(VideoState *cur_stream)
                     stream_seek(cur_stream, ts, 0, 0);
                 }
             break;
+#if 0	
         case SDL_VIDEORESIZE:
                 screen = SDL_SetVideoMode(FFMIN(16383, event.resize.w), event.resize.h, 0,
                                           SDL_HWSURFACE|SDL_RESIZABLE|SDL_ASYNCBLIT|SDL_HWACCEL);
@@ -3361,6 +3376,7 @@ static void event_loop(VideoState *cur_stream)
                 screen_height = cur_stream->height = screen->h;
                 cur_stream->force_refresh = 1;
             break;
+#endif
         case SDL_QUIT:
         case FF_QUIT_EVENT:
             do_exit(cur_stream);
@@ -3634,12 +3650,13 @@ int main(int argc, char **argv)
     if (display_disable) {
         video_disable = 1;
     }
-    flags = SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER;
+    flags = SDL_INIT_EVERYTHING;
     if (audio_disable)
         flags &= ~SDL_INIT_AUDIO;
-    if (display_disable)
-        SDL_putenv(dummy_videodriver); /* For the event queue, we always need a video driver. */
-#if !defined(__MINGW32__) && !defined(__APPLE__)
+    if (display_disable) {
+		SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
+    }
+#if !defined(__MINGW32__) && !defined(__APPLE__) && !defined(ANDROID)
     flags |= SDL_INIT_EVENTTHREAD; /* Not supported on Windows or Mac OS X */
 #endif
     if (SDL_Init (flags)) {
@@ -3648,13 +3665,11 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    if (!display_disable) {
-        const SDL_VideoInfo *vi = SDL_GetVideoInfo();
-        fs_screen_width = vi->current_w;
-        fs_screen_height = vi->current_h;
+    if (!display_disable && screen) {
+		SDL_GetWindowSize(screen, &fs_screen_width, &fs_screen_height);
     }
 
-    SDL_EventState(SDL_ACTIVEEVENT, SDL_IGNORE);
+    // SDL_EventState(SDL_ACTIVEEVENT, SDL_IGNORE);
     SDL_EventState(SDL_SYSWMEVENT, SDL_IGNORE);
     SDL_EventState(SDL_USEREVENT, SDL_IGNORE);
 

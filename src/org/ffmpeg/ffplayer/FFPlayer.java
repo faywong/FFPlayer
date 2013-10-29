@@ -2,9 +2,6 @@ package org.ffmpeg.ffplayer;
 
 import java.util.Arrays;
 
-import org.ffmpeg.ffplayer.render.DefaultRender;
-import org.ffmpeg.ffplayer.render.SDLInput.DifferentTouchInput;
-
 import android.app.*;
 import android.content.*;
 import android.view.*;
@@ -47,11 +44,14 @@ public class FFPlayer extends Activity {
     // Load the .so
     static {
         System.loadLibrary("SDL2");
-        //System.loadLibrary("SDL2_image");
-        //System.loadLibrary("SDL2_mixer");
-        //System.loadLibrary("SDL2_net");
-        //System.loadLibrary("SDL2_ttf");
-        System.loadLibrary("main");
+        //System.loadLibrary("avcodec");
+        //System.loadLibrary("avdevice");
+        //System.loadLibrary("avfilter");
+        //System.loadLibrary("avformat");
+        //System.loadLibrary("avresample");
+        //System.loadLibrary("avutil");
+        //System.loadLibrary("swresample");
+        //System.loadLibrary("swscale");
     }
 
     // Setup

@@ -23,12 +23,6 @@ freely, subject to the following restrictions:
 package org.ffmpeg.ffplayer.util;
 
 import android.app.Activity;
-import android.content.Context;
-import android.view.MotionEvent;
-import android.view.KeyEvent;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.TextView;
 import android.view.View;
 
 public class Advertisement

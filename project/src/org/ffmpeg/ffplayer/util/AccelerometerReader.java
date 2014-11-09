@@ -26,18 +26,10 @@ import org.ffmpeg.ffplayer.config.Settings;
 
 import android.app.Activity;
 import android.content.Context;
-import android.os.Bundle;
-import android.view.MotionEvent;
-import android.view.KeyEvent;
-import android.view.Window;
-import android.view.WindowManager;
-import android.os.Vibrator;
-import android.hardware.SensorManager;
-import android.hardware.SensorEventListener;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
-
-import android.widget.TextView;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 
 
 public class AccelerometerReader implements SensorEventListener

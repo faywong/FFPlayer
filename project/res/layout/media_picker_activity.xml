@@ -23,32 +23,33 @@
 
     <LinearLayout
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content" 
+        android:layout_height="wrap_content"
         android:orientation="horizontal" >
 
         <Spinner
             android:id="@+id/network_protocol_spinner"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-        <EditText 
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical" />
+
+        <EditText
             android:id="@+id/url_portion"
             android:layout_width="0dip"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
             android:layout_weight="1"
-            android:inputType="textUri"
-            android:hint="@string/network_source_hint">
-        </EditText>    
+            android:hint="@string/network_source_hint"
+            android:inputType="textUri" >
+        </EditText>
+
         <Button
             android:id="@+id/network_play_btn"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="right|center_vertical"
-            android:text="@string/network_play_button_label"
-            >
-            
+            android:layout_height="fill_parent"
+            android:layout_gravity="right"
+            android:text="@string/network_play_button_label" >
         </Button>
-        
-        </LinearLayout>
+    </LinearLayout>
 
     <include layout="@layout/sd_error" />
 

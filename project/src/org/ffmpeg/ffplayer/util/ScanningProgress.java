@@ -1,7 +1,6 @@
 package org.ffmpeg.ffplayer.util;
 
-import org.ffmpeg.ffplayer.R;
-
+import io.github.faywong.ffplayer.R;
 import android.app.Activity;
 import android.database.Cursor;
 import android.media.AudioManager;

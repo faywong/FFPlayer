@@ -1,6 +1,5 @@
 package org.ffmpeg.ffplayer.util;
-import org.ffmpeg.ffplayer.R;
-
+import io.github.faywong.ffplayer.R;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Resources;

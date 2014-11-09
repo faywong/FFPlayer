@@ -1,5 +1,7 @@
 package org.ffmpeg.ffplayer.config;
 
+import io.github.faywong.ffplayer.R;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,8 +17,8 @@ import java.util.zip.GZIPInputStream;
 
 import org.ffmpeg.ffplayer.FFPlayer;
 import org.ffmpeg.ffplayer.render.SDLInput;
-import org.ffmpeg.ffplayer.render.SDL_Keys;
 import org.ffmpeg.ffplayer.render.SDLInput.Mouse;
+import org.ffmpeg.ffplayer.render.SDL_Keys;
 import org.ffmpeg.ffplayer.util.AccelerometerReader;
 
 import android.annotation.SuppressLint;
@@ -28,7 +30,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.hardware.Sensor;
@@ -48,8 +49,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import org.ffmpeg.ffplayer.R;
 
 public class Settings {
     static String         SettingsFileName      = "libsdl-settings.cfg";

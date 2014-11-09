@@ -1,23 +1,35 @@
 package org.ffmpeg.ffplayer;
 
+import io.github.faywong.ffplayer.R;
 import android.app.ListActivity;
+import android.app.LoaderManager.LoaderCallbacks;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.ContentUris;
+import android.content.Context;
 import android.content.CursorLoader;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.Loader;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.provider.MediaStore;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Spinner;
 import android.widget.Toast;
@@ -25,24 +37,38 @@ import android.widget.AdapterView.OnItemSelectedListener;
 
 import org.ffmpeg.ffplayer.util.MusicUtils;
 
-public class FFMediaLibrary extends ListActivity implements MusicUtils.Defs, OnItemSelectedListener  {
-    private static final String   TAG           = "FFMediaLibrary";
-    private static final String[] video_filters = { MediaStore.Video.Media.TITLE,
+public class FFMediaLibrary extends ListActivity implements MusicUtils.Defs,
+        OnItemSelectedListener, LoaderCallbacks<Cursor> {
+    private static final String   TAG                     = "FFMediaLibrary";
+    private static final String[] displayColumnCandidates = { MediaStore.Video.Media.TITLE,
             MediaStore.Video.Media.DATA, MediaStore.Video.Media.DISPLAY_NAME, };
 
-    private String target_protocol;
-    private Spinner protocol_pinner;
-    private EditText url_portion;
+    private String                targetProtocol;
+    private Spinner               protocol_pinner;
+    private EditText              url_portion;
+
+    private Cursor                mCursor;
+    private String                mSortOrder;
+    private String                displayColumn           = MediaStore.Video.Media.DISPLAY_NAME;
+    private SimpleCursorAdapter   mAdapter;
+    private BroadcastReceiver mediaScannerReceiver;
+    
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        if(!prefs.getBoolean("first_time", false))
+        {
+            Intent i = new Intent(FFMediaLibrary.this, AboutActivity.class);
+            this.startActivity(i);
+            this.finish();
+        }
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         init();
     }
-
+    
     public void init() {
-
         // Set the layout for this activity. You can find it
         // in assets/res/any/layout/media_picker_activity.xml
         setContentView(R.layout.media_picker_activity);
@@ -74,12 +100,14 @@ public class FFMediaLibrary extends ListActivity implements MusicUtils.Defs, OnI
 
                 String url_remaining_portion = url_portion.getText().toString();
                 if (url_remaining_portion != null && url_remaining_portion.isEmpty()) {
-                    Toast.makeText(FFMediaLibrary.this, "You need to input a valid url!", Toast.LENGTH_SHORT);
+                    Toast.makeText(FFMediaLibrary.this, "You need to input a valid url!",
+                            Toast.LENGTH_SHORT).show();
+                    ;
                     return;
                 }
                 Log.d(TAG, "onClick() in check point 2");
 
-                String network_src_url = target_protocol + url_remaining_portion;
+                String network_src_url = targetProtocol + url_remaining_portion;
                 Log.d(TAG, "The target network src url:" + network_src_url);
                 Intent launchFFPlayer = new Intent(Intent.ACTION_VIEW);
                 Uri uri = Uri.parse(network_src_url);
@@ -97,26 +125,57 @@ public class FFMediaLibrary extends ListActivity implements MusicUtils.Defs, OnI
             }
         });
 
-        MakeCursor();
-
-        if (mCursor == null) {
-            MusicUtils.displayDatabaseError(this);
-            return;
+        final ContentResolver resolver = getContentResolver();
+        Cursor cursor = resolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, null, null,
+                null, null);
+        for (String candidate : displayColumnCandidates) {
+            if (-1 != cursor.getColumnIndex(candidate)) {
+                displayColumn = candidate;
+                break;
+            }
         }
-        Log.d(TAG, "mCursor " + mCursor + " count:" + mCursor.getCount());
+        getLoaderManager().initLoader(0, null, this);
 
-        if (mCursor.getCount() > 0) {
-            setTitle(R.string.videos_title);
-        } else {
-            setTitle(R.string.no_videos_title);
-        }
+        // Create a progress bar to display while the list loads
+        ProgressBar progressBar = new ProgressBar(this);
+        progressBar.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT));
+        progressBar.setIndeterminate(true);
+        getListView().setEmptyView(progressBar);
+
+        // Must add the progress bar to the root of the layout
+        ViewGroup root = (ViewGroup) findViewById(android.R.id.content);
+        root.addView(progressBar);
 
         // Map Cursor columns to views defined in media_list_item.xml
-        SimpleCursorAdapter protocolAdapter = new SimpleCursorAdapter(this,
-                android.R.layout.simple_list_item_1, mCursor, new String[] { mDisplayName },
-                new int[] { android.R.id.text1 });
+        mAdapter = new SimpleCursorAdapter(this, android.R.layout.simple_list_item_1, null,
+                new String[] { displayColumn }, new int[] { android.R.id.text1 }, 0);
 
-        setListAdapter(protocolAdapter);
+        setListAdapter(mAdapter);
+        
+        mediaScannerReceiver = new BroadcastReceiver() {
+
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                // TODO Auto-generated method stub
+                final String action = intent.getAction();
+                if (TextUtils.isEmpty(action)) {
+                    return;
+                }
+                if (TextUtils.equals(action, Intent.ACTION_MEDIA_SCANNER_FINISHED)) {
+                    Loader<Cursor> oldLoader = getLoaderManager().getLoader(0);
+                    if (oldLoader != null) {
+                        oldLoader.forceLoad();
+                    }
+                }
+            }
+            
+        };
+        
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_MEDIA_SCANNER_FINISHED);
+        filter.addAction(Intent.ACTION_MEDIA_SCANNER_STARTED);
+        registerReceiver(mediaScannerReceiver, filter);
     }
 
     @Override
@@ -131,53 +190,59 @@ public class FFMediaLibrary extends ListActivity implements MusicUtils.Defs, OnI
         startActivity(intent);
     }
 
-    private void MakeCursor() {
-        String[] cols = new String[] { MediaStore.Video.Media._ID, MediaStore.Video.Media.TITLE,
-                MediaStore.Video.Media.DATA, MediaStore.Video.Media.MIME_TYPE,
-                MediaStore.Video.Media.ARTIST };
-        ContentResolver resolver = getContentResolver();
-        if (resolver == null) {
-            Log.d(TAG, "resolver = null");
-        } else {
-            for (String filter_key : video_filters) {
-                String whereClause = filter_key + " != ''";
-                mSortOrder = MediaStore.Video.Media.DISPLAY_NAME + " COLLATE UNICODE";
-                /*
-                mCursor = resolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, cols,
-                        whereClause, null, mSortOrder);
-                */
-                CursorLoader loader = new CursorLoader(this, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, cols, whereClause, null, mSortOrder);
-                mCursor = loader.loadInBackground();
-
-                if (mCursor != null && mCursor.getCount() > 0) {
-                    mDisplayName = filter_key;
-                    break;
-                }
-            }
-        }
-    }
-
     @Override
     public void onDestroy() {
         if (mCursor != null) {
             mCursor.close();
         }
+        unregisterReceiver(mediaScannerReceiver);
         super.onDestroy();
     }
-
-    private Cursor mCursor;
-    private String mSortOrder;
-    private String mDisplayName = MediaStore.Video.Media.DISPLAY_NAME;
 
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
         // TODO Auto-generated method stub
-        target_protocol = (String)parent.getItemAtPosition(pos);
+        targetProtocol = (String) parent.getItemAtPosition(pos);
     }
 
     @Override
     public void onNothingSelected(AdapterView<?> parent) {
         // TODO Auto-generated method stub
         protocol_pinner.setSelection(0, true);
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        // TODO Auto-generated method stub
+        String[] cols = new String[] { MediaStore.Video.Media._ID, MediaStore.Video.Media.TITLE,
+                MediaStore.Video.Media.DATA, MediaStore.Video.Media.MIME_TYPE,
+                MediaStore.Video.Media.ARTIST };
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(MediaStore.Video.Media.TITLE + " != '' OR ");
+        sb.append(displayColumn + " != ''");
+
+        String whereClause = sb.toString();
+        mSortOrder = MediaStore.Video.Media.DISPLAY_NAME + " COLLATE UNICODE";
+        return new CursorLoader(this, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, cols,
+                whereClause, null, mSortOrder);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        // TODO Auto-generated method stub
+        mCursor = data;
+        if (mCursor != null && mCursor.getCount() > 0) {
+            setTitle(R.string.videos_title);
+        } else {
+            setTitle(R.string.no_videos_title);
+        }
+        mAdapter.swapCursor(mCursor);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        // TODO Auto-generated method stub
+        mAdapter.swapCursor(null);
     }
 }

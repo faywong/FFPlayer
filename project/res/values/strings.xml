@@ -204,4 +204,6 @@
     <string name="file_system_source_label">Local</string>
     <string name="network_source_hint">network url here</string>
     <string name="network_play_button_label">Play</string>
+    <string name="sdl_tutorials">SDL2 Tutorials</string>
+    
 </resources>

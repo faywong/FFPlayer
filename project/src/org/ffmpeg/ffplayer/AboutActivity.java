@@ -39,5 +39,6 @@ public class AboutActivity extends FragmentActivity {
                 finish();
             }
         });
+        
     }
 }

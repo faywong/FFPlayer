@@ -19,8 +19,10 @@ Cygwin is not supported by the NDK, starting from the NDK r6.
 
 How to compile the application
 ===============================
+
+build all from scratch
+
 '''bash
-# build all from scratch
 . build/envsetup.sh
 build
 '''
@@ -65,7 +67,7 @@ Distribute
 ==========
 you can download the [apk](https://github.com/faywong/FFPlayer/blob/trunk/FFPlayer.apk)
 
-or get it on Google Play
+or 
 <a
 href="https://play.google.com/store/apps/details?id=io.github.faywong.ffplayer">
   <img alt="Get it on Google Play"

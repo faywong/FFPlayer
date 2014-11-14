@@ -22,10 +22,10 @@ How to compile the application
 
 build all from scratch
 
-'''bash
+```bash
 . build/envsetup.sh
 build
-'''
+```
 
 if you want to harness the prebuilt libraries, you can import the "project" directory as a android project in Eclipse
 

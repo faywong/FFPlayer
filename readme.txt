@@ -19,10 +19,13 @@ Cygwin is not supported by the NDK, starting from the NDK r6.
 
 How to compile the application
 ===============================
+'''bash
+# build all from scratch
+. build/envsetup.sh
+build
+'''
 
-Launch commands
-    . build/envsetup.sh
-    build
+if you want to harness the prebuilt libraries, you can import the "project" directory as a android project in Eclipse
 
 Remind to add NDK dir to your PATH, then launch it.
 It will compile a bunch of libs under project/libs/armeabi,
@@ -36,20 +39,6 @@ git submodule update --init
 Some of them may be outdated and won't compile, some contain only patch file and no sources,
 so you should check out Git logs before compiling a particular app, and checkout whole repo at that date:
 gitk project/jni/application/<directory>
-
-The game enforces horizontal screen orientation, you may slide-open your keyboard if you have it
-and use it for additional keys - the device will just keep current screen orientation.
-Recent Android phone models like HTC Evo have no keyboard at all, on-screen keyboard built into SDL
-is available for such devices - it has joystick (which can be configured as arrow buttons or analog joystick),
-and 6 configurable keys, full text input is toggled with 7-th key. Both user and application may redefine
-button layout and returned keycodes, and also toggle full text input - see SDL_screenkeyboard.h.
-Also you can read multitouch events and accelerometer events - they are passed as joystick events,
-see Ballfield sample app for the input event handling code.
-
-This port also supports GL ES + SDL combo - there is GLXGears demo app in project/jni/application/glxgears,
-to compile it remove project/jni/application/src symlink and make new one pointing to glxgears, and run build.sh
-Note that GL ES is NOT pure OpenGL - there are no glBegin() and glEnd() call and other widely used functions,
-and generally it will take a lot of effort to port OpenGL application to GL ES.
 
 License information
 ===================
@@ -72,6 +61,14 @@ The "Ultimate Droid" on-screen keyboard theme by Sean Stieber is licensed under 
 The "Simple Theme" on-screen keyboard theme by Dmitry Matveev is licensed under zlib license.
 The "Sun" on-screen keyboard theme by Sirea (Martina Smejkalova) is licensed under Creative Commons - Attribution license.
 
-Reference
-=========
-https://github.com/pelya/commandergenius
+Distribute
+==========
+you can download the [apk](https://github.com/faywong/FFPlayer/blob/trunk/FFPlayer.apk)
+
+or get it on Google Play
+<a
+href="https://play.google.com/store/apps/details?id=io.github.faywong.ffplayer">
+  <img alt="Get it on Google Play"
+       src="https://developer.android.com/images/brand/en_generic_rgb_wo_45.png"
+/>
+</a>

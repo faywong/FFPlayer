@@ -67,8 +67,7 @@ Distribute
 ==========
 you can download the [apk](https://github.com/faywong/FFPlayer/blob/trunk/FFPlayer.apk)
 
-or 
-<a
+or <a
 href="https://play.google.com/store/apps/details?id=io.github.faywong.ffplayer">
   <img alt="Get it on Google Play"
        src="https://developer.android.com/images/brand/en_generic_rgb_wo_45.png"
